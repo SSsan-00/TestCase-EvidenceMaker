@@ -42,17 +42,30 @@ Private Const EMPTY_STREAK_STOP_COUNT As Long = 100  ' A/E/H空行が連続したら走査
 
 ' ===== エビデンスシートへの書き込み（スロット） =====
 Private Const FIRST_DEST_ROW As Long = 3 ' slot0 の書き込み開始行
-Private Const SLOT_HEIGHT As Long = 30   ' 既定値: 30行刻み
+Private Const SLOT_HEIGHT As Long = 50   ' 既定値: 50行刻み
 Private Const DEST_COL_A As Long = 1     ' 書き込み先 A列
 Private Const DEST_COL_B As Long = 2     ' 書き込み先 B列
+Private Const BORDER_END_COL As Long = 27 ' 上罫線の終端（AA列）
 
 ' ===== 共通モード先頭シートのヘッダ置換 =====
 Private Const HEADER_PLACEHOLDER As String = "〇〇〇"
 
 ' ===== Office定数を数値で扱う（参照設定に依存しにくくするため） =====
 Private Const FILE_DIALOG_PICKER As Long = 3 ' msoFileDialogFilePicker
+Public Const OPTION_TOP_BORDER_ENABLED As Boolean = True ' True: A:AAに上罫線を適用 / False: 上罫線を適用しない
+Public Const OPTION_SLOT_HEIGHT_PROMPT_ENABLED As Boolean = True ' True: 行オフセット入力を表示 / False: SLOT_HEIGHTを使用
+Public Const OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED As Boolean = True ' True: 作成シート選択入力を表示 / False: 全シート出力
+' 出力対象から除外したいシート名/パターンを Like 形式で指定
+' 例: A4,A5,A1-1,A2-3-1,B3-*
+Public Const OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED As Boolean = True ' True: 除外パターン一致シートを作成しない / False: すべて作成対象
+Private Const EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS As String = "A4,A5,A1-1,A2-3-1" ' Likeパターンをカンマ区切りで指定
+' 参照元セルの塗りつぶし色が一致した場合、そのセル値を未入力扱いでスキップする
+' 例: #f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080
+Public Const OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED As Boolean = True ' True: 灰色塗りつぶしセルを読み飛ばす / False: 色判定を行わない
+Private Const SOURCE_SKIP_FILL_COLOR_HEX_CODES As String = "#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080" ' 比較対象カラーコード（#RRGGBB）
 
 Private mSlotHeight As Long ' スロット行オフセット（未指定時は既定値を使用）
+Private mSkipSourceFillColorMap As Object ' 参照元塗りつぶしスキップ色マップ
 
 ' ============================================================
 ' エントリポイント
@@ -122,9 +135,20 @@ Public Sub RunMain()
         Exit Sub
     End If
 
-    mSlotHeight = PromptSlotHeightOrDefault(SLOT_HEIGHT)
-    Set outputSheetFilter = PromptOutputSheetFilter()
+    If OPTION_SLOT_HEIGHT_PROMPT_ENABLED Then
+        mSlotHeight = PromptSlotHeightOrDefault(SLOT_HEIGHT)
+    Else
+        mSlotHeight = SLOT_HEIGHT ' 入力ダイアログOFF時は既定オフセットをそのまま使う
+    End If
+
+    If OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED Then
+        Set outputSheetFilter = PromptOutputSheetFilter()
+    Else
+        Set outputSheetFilter = Nothing ' 入力ダイアログOFF時は全シートを出力対象にする
+    End If
+
     outputSheetFilterLabel = BuildOutputSheetFilterLabel(outputSheetFilter)
+    Set mSkipSourceFillColorMap = BuildSkipSourceFillColorMap()
 
     ' 後続処理で共通/個別シート名や置換に使うため、拡張子なし名を作成する
     baseName = RemoveExtension(inputFileName)
@@ -286,6 +310,7 @@ SafeExit:
         End If
     End If
 
+    Set mSkipSourceFillColorMap = Nothing
     If appStateCaptured Then
         Application.ScreenUpdating = prevScreenUpdating
         Application.DisplayAlerts = prevDisplayAlerts
@@ -361,7 +386,7 @@ Private Function PromptSlotHeightOrDefault(ByVal defaultHeight As Long) As Long
 
     inputText = InputBox( _
         "スロットの行オフセットを入力してください（空欄は既定値 " & CStr(defaultHeight) & "）。" & vbCrLf & _
-        "例: 30", _
+        "例: 50", _
         "スロット行オフセット", _
         CStr(defaultHeight))
 
@@ -460,6 +485,122 @@ Private Function IsSheetAllowedByFilter( _
     Else
         IsSheetAllowedByFilter = outputSheetFilter.Exists(sheetName)
     End If
+End Function
+
+Private Function IsExcludedByOutputSheetPattern(ByVal sheetName As String) As Boolean
+    Dim normalizedName As String
+    Dim rawPatterns As String
+    Dim patterns As Variant
+    Dim patternText As String
+    Dim i As Long
+
+    If Not OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED Then Exit Function
+
+    normalizedName = Trim$(sheetName)
+    If Len(normalizedName) = 0 Then Exit Function
+
+    rawPatterns = Replace(EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS, "，", ",")
+    patterns = Split(rawPatterns, ",")
+
+    For i = LBound(patterns) To UBound(patterns)
+        patternText = Trim$(CStr(patterns(i)))
+        If Len(patternText) > 0 Then
+            If normalizedName Like patternText Then
+                IsExcludedByOutputSheetPattern = True
+                Exit Function
+            End If
+        End If
+    Next i
+End Function
+
+Private Function BuildSkipSourceFillColorMap() As Object
+    Dim dict As Object
+    Dim rawText As String
+    Dim rawItems As Variant
+    Dim normalizedHex As String
+    Dim colorValue As Long
+    Dim i As Long
+
+    If Not OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED Then Exit Function
+
+    rawText = Replace(SOURCE_SKIP_FILL_COLOR_HEX_CODES, "，", ",")
+    rawItems = Split(rawText, ",")
+
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbBinaryCompare
+
+    For i = LBound(rawItems) To UBound(rawItems)
+        normalizedHex = NormalizeHexColorTextForFillRule(CStr(rawItems(i)))
+        If Len(normalizedHex) > 0 Then
+            colorValue = HexColorTextToColorLong(normalizedHex)
+            If colorValue >= 0 Then
+                If Not dict.Exists(CStr(colorValue)) Then
+                    dict.Add CStr(colorValue), True
+                End If
+            End If
+        End If
+    Next i
+
+    If dict.Count = 0 Then
+        Set BuildSkipSourceFillColorMap = Nothing
+    Else
+        Set BuildSkipSourceFillColorMap = dict
+    End If
+End Function
+
+Private Function NormalizeHexColorTextForFillRule(ByVal rawText As String) As String
+    Dim t As String
+    Dim i As Long
+    Dim ch As String
+
+    t = UCase$(Trim$(rawText))
+    If Len(t) = 0 Then Exit Function
+
+    If Left$(t, 1) = "#" Then
+        t = Mid$(t, 2)
+    ElseIf Left$(t, 2) = "0X" Then
+        t = Mid$(t, 3)
+    End If
+
+    If Len(t) <> 6 Then Exit Function
+
+    For i = 1 To 6
+        ch = Mid$(t, i, 1)
+        If InStr(1, "0123456789ABCDEF", ch, vbBinaryCompare) = 0 Then Exit Function
+    Next i
+
+    NormalizeHexColorTextForFillRule = t
+End Function
+
+Private Function HexColorTextToColorLong(ByVal normalizedHex6 As String) As Long
+    Dim redPart As Long
+    Dim greenPart As Long
+    Dim bluePart As Long
+
+    On Error GoTo ConversionError
+
+    redPart = CLng("&H" & Mid$(normalizedHex6, 1, 2))
+    greenPart = CLng("&H" & Mid$(normalizedHex6, 3, 2))
+    bluePart = CLng("&H" & Mid$(normalizedHex6, 5, 2))
+
+    HexColorTextToColorLong = RGB(redPart, greenPart, bluePart)
+    Exit Function
+
+ConversionError:
+    HexColorTextToColorLong = -1
+End Function
+
+Private Function ShouldSkipSourceCellByFillColor( _
+    ByVal sourceWs As Worksheet, _
+    ByVal rowNumber As Long, _
+    ByVal columnNumber As Long) As Boolean
+
+    Dim colorValue As Long
+
+    If mSkipSourceFillColorMap Is Nothing Then Exit Function
+
+    colorValue = sourceWs.Cells(rowNumber, columnNumber).Interior.Color
+    ShouldSkipSourceCellByFillColor = mSkipSourceFillColorMap.Exists(CStr(colorValue))
 End Function
 
 Private Function OpenTargetWorkbook(ByVal workbookPath As String, Optional ByVal openReadOnly As Boolean = False) As Workbook
@@ -965,6 +1106,7 @@ Private Function ProcessReferenceSheet( _
     Dim slotWriteCount As Long
     Dim ignoredDataBeforeSheetCount As Long
     Dim skippedByFilterCount As Long
+    Dim skippedByPatternRuleCount As Long
 
     Dim maxRowA As Long
     Dim maxRowB As Long
@@ -1004,6 +1146,9 @@ Private Function ProcessReferenceSheet( _
         rawA = sourceValuesA(rowOffset, 1)
         rawB = sourceValuesB(rowOffset, 1)
         rawC = sourceValuesC(rowOffset, 1)
+        If ShouldSkipSourceCellByFillColor(sourceWs, r, SOURCE_COL_A) Then rawA = vbNullString
+        If ShouldSkipSourceCellByFillColor(sourceWs, r, SOURCE_COL_B) Then rawB = vbNullString
+        If ShouldSkipSourceCellByFillColor(sourceWs, r, SOURCE_COL_C) Then rawC = vbNullString
 
         ' エラー値が紛れていると原因が分かりにくくなるため、行番号付きで即時中断する
         EnsureNotErrorValue rawA, sourceWs.Name, r, "A"
@@ -1028,8 +1173,21 @@ Private Function ProcessReferenceSheet( _
             End If
 
             aSheetName = NormalizeEvidenceSheetName(rawA, sourceWs.Name, r)
-
-            If Not IsSheetAllowedByFilter(aSheetName, outputSheetFilter) Then
+            ' 共通モードでは A1-1-1 は共通ヘッダ専用のため、参照元A列からは作成しない
+            If StrComp(modeLabel, "共通", vbBinaryCompare) = 0 And _
+               StrComp(aSheetName, TEMPLATE_HEADER_SHEET_NAME, vbBinaryCompare) = 0 Then
+                skippedByPatternRuleCount = skippedByPatternRuleCount + 1
+                Set currentEvidenceWs = Nothing
+                currentEvidenceSheetName = vbNullString
+                slotIndex = 0
+                hasPendingB = False
+            ElseIf IsExcludedByOutputSheetPattern(aSheetName) Then
+                skippedByPatternRuleCount = skippedByPatternRuleCount + 1
+                Set currentEvidenceWs = Nothing
+                currentEvidenceSheetName = vbNullString
+                slotIndex = 0
+                hasPendingB = False
+            ElseIf Not IsSheetAllowedByFilter(aSheetName, outputSheetFilter) Then
                 skippedByFilterCount = skippedByFilterCount + 1
                 Set currentEvidenceWs = Nothing
                 currentEvidenceSheetName = vbNullString
@@ -1114,6 +1272,9 @@ Private Function ProcessReferenceSheet( _
                            ", スロット書込数=" & CStr(slotWriteCount) & _
                            IIf(ignoredDataBeforeSheetCount > 0, _
                                ", 先行E/Hスキップ行=" & CStr(ignoredDataBeforeSheetCount), _
+                               vbNullString) & _
+                           IIf(skippedByPatternRuleCount > 0, _
+                               ", パターン除外シート=" & CStr(skippedByPatternRuleCount), _
                                vbNullString) & _
                            IIf(skippedByFilterCount > 0, _
                                ", フィルタ除外シート=" & CStr(skippedByFilterCount), _
@@ -1343,6 +1504,7 @@ Private Sub WritePairSlot( _
 
     destWs.Cells(destRow, DEST_COL_A).Value = pendingB
     destWs.Cells(destRow, DEST_COL_B).Value = cValue
+    ApplyTopBorderToConfirmedRow destWs, destRow
 End Sub
 
 Private Sub WriteCOnlySlot( _
@@ -1355,6 +1517,7 @@ Private Sub WriteCOnlySlot( _
 
     destRow = GetDestRowForSlot(slotIndex)
     destWs.Cells(destRow, DEST_COL_B).Value = cValue
+    ApplyTopBorderToConfirmedRow destWs, destRow
 End Sub
 
 Private Sub WriteBOnlySlot( _
@@ -1367,6 +1530,41 @@ Private Sub WriteBOnlySlot( _
 
     destRow = GetDestRowForSlot(slotIndex)
     destWs.Cells(destRow, DEST_COL_A).Value = bValue
+    ApplyTopBorderToConfirmedRow destWs, destRow
+End Sub
+
+Private Sub ApplyTopBorderToConfirmedRow( _
+    ByVal destWs As Worksheet, _
+    ByVal targetRow As Long)
+
+    Dim aValue As Variant
+    Dim bValue As Variant
+    Dim hasAValue As Boolean
+    Dim hasBValue As Boolean
+    Dim borderRange As Range
+
+    If targetRow = FIRST_DEST_ROW Then Exit Sub
+    If Not OPTION_TOP_BORDER_ENABLED Then Exit Sub ' OFF時は上罫線処理をスキップ
+
+    aValue = destWs.Cells(targetRow, DEST_COL_A).Value
+    bValue = destWs.Cells(targetRow, DEST_COL_B).Value
+
+    If IsError(aValue) Then Exit Sub
+    If IsError(bValue) Then Exit Sub
+
+    hasAValue = (Len(Trim$(CStr(aValue))) > 0)
+    hasBValue = (Len(Trim$(CStr(bValue))) > 0)
+
+    If Not hasAValue And Not hasBValue Then Exit Sub
+
+    Set borderRange = destWs.Range( _
+        destWs.Cells(targetRow, DEST_COL_A), _
+        destWs.Cells(targetRow, BORDER_END_COL))
+
+    With borderRange.Borders(xlEdgeTop)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
 End Sub
 
 Private Function GetDestRowForSlot(ByVal slotIndex As Long) As Long
@@ -1428,8 +1626,4 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
-
-
-
-
 
