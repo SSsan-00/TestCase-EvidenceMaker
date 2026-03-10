@@ -46,6 +46,9 @@ Private Const SLOT_HEIGHT As Long = 50   ' 既定値: 50行刻み
 Private Const DEST_COL_A As Long = 1     ' 書き込み先 A列
 Private Const DEST_COL_B As Long = 2     ' 書き込み先 B列
 Private Const BORDER_END_COL As Long = 27 ' 上罫線の終端（AA列）
+Public Const OPTION_RIGHT_BORDER_ENABLED As Boolean = True ' True: 右罫線を適用 / False: 右罫線を適用しない
+Private Const RIGHT_BORDER_TARGET_COL As Long = 26 ' 右罫線を引く対象列（既定: Z列）
+Private Const RIGHT_BORDER_EXTRA_ROWS As Long = 50 ' 最終書き込み行から下方向へ延長する行数
 
 ' ===== 共通モード先頭シートのヘッダ置換 =====
 Private Const HEADER_PLACEHOLDER As String = "〇〇〇"
@@ -120,7 +123,6 @@ Public Sub RunMain()
     Set templateBodyWs = GetWorksheetOrRaise(macroWb, TEMPLATE_BODY_SHEET_NAME, "雛形シート（本体）")
     Set templateHeaderWs = GetWorksheetOrRaise(macroWb, TEMPLATE_HEADER_SHEET_NAME, "雛形シート（ヘッダー）")
     Set referWs = GetWorksheetOrRaise(macroWb, REFER_SHEET_NAME, "REFERシート")
-
     ' 参照元になるxlsxファイルを選択する
     targetPath = SelectTargetWorkbookPath()
     If Len(targetPath) = 0 Then
@@ -1505,6 +1507,7 @@ Private Sub WritePairSlot( _
     destWs.Cells(destRow, DEST_COL_A).Value = pendingB
     destWs.Cells(destRow, DEST_COL_B).Value = cValue
     ApplyTopBorderToConfirmedRow destWs, destRow
+    ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
 
 Private Sub WriteCOnlySlot( _
@@ -1518,6 +1521,7 @@ Private Sub WriteCOnlySlot( _
     destRow = GetDestRowForSlot(slotIndex)
     destWs.Cells(destRow, DEST_COL_B).Value = cValue
     ApplyTopBorderToConfirmedRow destWs, destRow
+    ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
 
 Private Sub WriteBOnlySlot( _
@@ -1531,6 +1535,34 @@ Private Sub WriteBOnlySlot( _
     destRow = GetDestRowForSlot(slotIndex)
     destWs.Cells(destRow, DEST_COL_A).Value = bValue
     ApplyTopBorderToConfirmedRow destWs, destRow
+    ApplyRightBorderToConfiguredColumn destWs, destRow
+End Sub
+
+Private Sub ApplyRightBorderToConfiguredColumn( _
+    ByVal destWs As Worksheet, _
+    ByVal lastWrittenRow As Long)
+
+    Dim endRow As Long
+    Dim targetCol As Long
+    Dim borderRange As Range
+
+    If Not OPTION_RIGHT_BORDER_ENABLED Then Exit Sub
+    If lastWrittenRow < FIRST_DEST_ROW Then Exit Sub
+
+    targetCol = RIGHT_BORDER_TARGET_COL
+    If targetCol < 1 Or targetCol > 16384 Then
+        targetCol = 26
+    End If
+
+    endRow = lastWrittenRow + RIGHT_BORDER_EXTRA_ROWS
+    Set borderRange = destWs.Range( _
+        destWs.Cells(FIRST_DEST_ROW, targetCol), _
+        destWs.Cells(endRow, targetCol))
+
+    With borderRange.Borders(xlEdgeRight)
+        .LineStyle = xlContinuous
+        .Weight = xlThin
+    End With
 End Sub
 
 Private Sub ApplyTopBorderToConfirmedRow( _
@@ -1626,4 +1658,16 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
+
+
+
+
+
+
+
+
+
+
+
+
 
