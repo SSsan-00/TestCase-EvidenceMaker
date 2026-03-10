@@ -1354,7 +1354,12 @@ Private Function IsIfLine(ByVal lineText As String) As Boolean
 End Function
 
 Private Function IsElseIfLine(ByVal lineText As String) As Boolean
-    ' 「else if」の連続を前提にしつつ、各単語は単語区切りで判定する
+    ' 「else if」に加えて「elseif」も対象にする
+    If ContainsWholeWord(lineText, "elseif") Then
+        IsElseIfLine = True
+        Exit Function
+    End If
+
     IsElseIfLine = ContainsText(lineText, "else if") And _
                    ContainsWholeWord(lineText, "else") And _
                    ContainsWholeWord(lineText, "if")
@@ -1507,4 +1512,5 @@ Private Function EventCollection(ByVal ev As Collection, ByVal keyName As String
 NoCollection:
     Set EventCollection = Nothing
 End Function
+
 
