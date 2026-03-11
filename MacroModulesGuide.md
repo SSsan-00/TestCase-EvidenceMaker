@@ -147,7 +147,7 @@
 - コメント行（先頭 `#` / `//`）は除外
 - `<!doctype` / `<html` / `<head` を検出したら以降は解析停止
 - `function` 行: `Bn`
-- それ以外の対象構文（if/else if/else/三項/for/foreach/while/switch/case/default）: `Bn-`
+- それ以外の対象構文（if/else if/elseif/else/三項/for/foreach/while/switch/case/default）: `Bn-`
 
 ### 個別シート出力
 - 構文イベント（FUNCTION, SWITCH, IF, TERNARY, FOR, FOREACH, WHILE）を抽出して所定セルへ記入
@@ -175,19 +175,23 @@
   - A列に値あり
   - B列が空
 - 処理:
-  - その行の `A/B` の塗りつぶし色を指定色に設定
+  - `OPTION_ONLY_A_VALUE_ROW_FILL_TARGET` に応じて塗りつぶし列を切り替え
+  - `None`: 塗りつぶししない
+  - `Left`: `A` 列のみ
+  - `Right`: `B` 列のみ
+  - `Both`: `A/B` 列
 
 ### オプション・色設定
-- `OPTION_FILL_ONLY_A_VALUE_ROW_ENABLED`:
-  - `True`: A列のみ入力行の塗りつぶしを実施
-  - `False`: 実施しない
+- `OPTION_ONLY_A_VALUE_ROW_FILL_TARGET`:
+  - `None` / `Left` / `Right` / `Both`
+  - 既定: `Both`
 - `ONLY_A_VALUE_ROW_FILL_COLOR_HEX`:
   - 既定: `#a6a6a6`
   - `#RRGGBB` で変更可能
 
 ### prefix設定
-- `LoadPrefixesFromCode` の `Array(...)` を編集して追加・変更します。
-- 既定: `sqlS`, `sqlN`
+- モジュール先頭の `ESCAPE_TARGET_PREFIXES_CSV` を編集して追加・変更します（カンマ区切り）。
+- 既定: `sqlS,sqlN`
 
 ---
 

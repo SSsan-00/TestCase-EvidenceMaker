@@ -87,6 +87,7 @@ Public Sub RunMain()
     End If
 
     ' 対象ブックへ書き込みした内容を保存
+    ActivateSheetForNextOpen targetWorkbook, currentSourceSheet
     targetWorkbook.Save
 
     ' 7) 完了メッセージ
@@ -1475,6 +1476,17 @@ Private Function ContainsText(ByVal sourceText As String, ByVal findText As Stri
     End If
 End Function
 
+Private Sub ActivateSheetForNextOpen(ByVal wb As Workbook, ByVal targetSheet As Worksheet)
+    If wb Is Nothing Then Exit Sub
+    If targetSheet Is Nothing Then Exit Sub
+    If Not (targetSheet.Parent Is wb) Then Exit Sub
+
+    On Error Resume Next
+    wb.Activate
+    targetSheet.Activate
+    On Error GoTo 0
+End Sub
+
 Private Function NewEvent(ByVal eventKind As String) As Collection
     ' 疑似イベントオブジェクト（Collection + Key）を生成
     Dim ev As Collection
@@ -1512,5 +1524,7 @@ Private Function EventCollection(ByVal ev As Collection, ByVal keyName As String
 NoCollection:
     Set EventCollection = Nothing
 End Function
+
+
 
 

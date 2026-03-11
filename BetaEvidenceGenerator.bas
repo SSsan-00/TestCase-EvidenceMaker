@@ -45,9 +45,9 @@ Private Const FIRST_DEST_ROW As Long = 3 ' slot0 の書き込み開始行
 Private Const SLOT_HEIGHT As Long = 50   ' 既定値: 50行刻み
 Private Const DEST_COL_A As Long = 1     ' 書き込み先 A列
 Private Const DEST_COL_B As Long = 2     ' 書き込み先 B列
-Private Const BORDER_END_COL As Long = 27 ' 上罫線の終端（AA列）
+Private Const BORDER_END_COL As Long = 32 ' 上罫線の終端（AF列）
 Public Const OPTION_RIGHT_BORDER_ENABLED As Boolean = True ' True: 右罫線を適用 / False: 右罫線を適用しない
-Private Const RIGHT_BORDER_TARGET_COL As Long = 26 ' 右罫線を引く対象列（既定: Z列）
+Private Const RIGHT_BORDER_TARGET_COL As Long = 17 ' 右罫線を引く対象列（既定: Q列）
 Private Const RIGHT_BORDER_EXTRA_ROWS As Long = 50 ' 最終書き込み行から下方向へ延長する行数
 
 ' ===== 共通モード先頭シートのヘッダ置換 =====
@@ -224,6 +224,7 @@ Public Sub RunMain()
 
         If commonCreatedSheetCount > 0 Then
             RemoveSeedSheetIfNeeded targetWb, seedSheetName
+            ActivateFirstWorksheetForOpenState targetWb
             targetWb.Save
             targetWb.Close SaveChanges:=True
             Set targetWb = Nothing
@@ -262,6 +263,7 @@ Public Sub RunMain()
 
         If individualCreatedSheetCount > 0 Then
             RemoveSeedSheetIfNeeded targetWb, seedSheetName
+            ActivateFirstWorksheetForOpenState targetWb
             targetWb.Save
             targetWb.Close SaveChanges:=True
             Set targetWb = Nothing
@@ -729,6 +731,17 @@ Private Sub RemoveSeedSheetIfNeeded(ByVal wb As Workbook, ByVal seedSheetName As
 
     DeleteWorksheetIfExists wb, seedSheetName
 End Sub
+
+Private Sub ActivateFirstWorksheetForOpenState(ByVal wb As Workbook)
+    Dim firstWs As Worksheet
+
+    If wb Is Nothing Then Exit Sub
+    If wb.Worksheets.Count = 0 Then Exit Sub
+
+    Set firstWs = wb.Worksheets(1)
+    firstWs.Activate
+End Sub
+
 
 Private Sub DiscardOutputWorkbookAndFile( _
     ByRef wb As Workbook, _
@@ -1658,16 +1671,6 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
-
-
-
-
-
-
-
-
-
-
 
 
 

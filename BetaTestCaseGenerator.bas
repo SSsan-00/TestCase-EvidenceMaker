@@ -118,6 +118,7 @@ Public Sub RunMain()
         featureId:=featureId, _
         createdSheetCount:=createdSheetCount)
 
+    ActivateFirstWorksheetForOpenState outputWb
     outputWb.SaveAs Filename:=outputPath, FileFormat:=xlOpenXMLWorkbook
     outputWb.Close SaveChanges:=False
     Set outputWb = Nothing
@@ -620,6 +621,17 @@ Private Sub RemoveSeedSheetsIfNeeded(ByVal wb As Workbook, ByVal seedSheetNames 
     Next i
 End Sub
 
+Private Sub ActivateFirstWorksheetForOpenState(ByVal wb As Workbook)
+    Dim firstWs As Worksheet
+
+    If wb Is Nothing Then Exit Sub
+    If wb.Worksheets.Count = 0 Then Exit Sub
+
+    Set firstWs = wb.Worksheets(1)
+    firstWs.Activate
+End Sub
+
+
 ' ============================================================
 ' シート名安全化
 ' ============================================================
@@ -776,3 +788,5 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
+
+
