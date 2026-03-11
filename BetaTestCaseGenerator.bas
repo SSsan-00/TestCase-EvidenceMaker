@@ -46,6 +46,42 @@ Private Const MATCH_IDX_ROW As Long = 4
 
 ' ===== SaveAs ダイアログ =====
 Private Const SAVE_AS_FILTER As String = "Excel ブック (*.xlsx),*.xlsx"
+Public Type BetaTestCaseUiOptions
+    Enabled As Boolean
+    FeatureId As String
+    UseOutputPath As Boolean
+    OutputPath As String
+End Type
+
+Private mUiOptions As BetaTestCaseUiOptions
+
+Public Sub RunMainWithUiOptions(ByRef options As BetaTestCaseUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
+    Dim defaults As BetaTestCaseUiOptions
+
+    defaults.Enabled = True
+    defaults.FeatureId = vbNullString
+    defaults.UseOutputPath = False
+    defaults.OutputPath = vbNullString
+
+    CreateBetaTestCaseUiOptionsForForm = defaults
+End Function
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.FeatureId = vbNullString
+    mUiOptions.UseOutputPath = False
+    mUiOptions.OutputPath = vbNullString
+End Sub
 
 ' ============================================================
 ' 実行入口
@@ -179,6 +215,11 @@ Private Function PromptFeatureId() As String
     ' キャンセルまたは空文字は空で返し、呼び出し元で中断判断する。
     Dim s As String
 
+    If mUiOptions.Enabled Then
+        PromptFeatureId = Trim$(mUiOptions.FeatureId)
+        Exit Function
+    End If
+
     s = InputBox("機能連番を入力してください（例: S99-999-99）", "機能連番入力")
     PromptFeatureId = Trim$(s)
 End Function
@@ -191,6 +232,23 @@ Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As Stri
     Dim desiredPath As String
 
     defaultFileName = alpha & OUTPUT_FILE_SUFFIX & OUTPUT_FILE_EXT
+
+    If mUiOptions.Enabled Then
+        If mUiOptions.UseOutputPath Then
+            DecideOutputPath = BuildUniquePath(mUiOptions.OutputPath)
+            Exit Function
+        End If
+
+        If Len(Trim$(macroWb.Path)) > 0 Then
+            desiredPath = macroWb.Path & "\" & defaultFileName
+        Else
+            DecideOutputPath = vbNullString
+            Exit Function
+        End If
+
+        DecideOutputPath = BuildUniquePath(desiredPath)
+        Exit Function
+    End If
 
     If Len(Trim$(macroWb.Path)) > 0 Then
         desiredPath = macroWb.Path & "\" & defaultFileName
@@ -788,5 +846,6 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
+
 
 

@@ -20,9 +20,47 @@ Private Const SHEET_KEY_CURRENT_SOURCE As String = "現行ソース"
 Private Const SHEET_KEY_INDIVIDUAL_PREFIX As String = "【個別】"
 Private Const TEMPLATE_SNAPSHOT_SHEET_PREFIX As String = "__TMPROW15_"
 Private Const LEADING_FUNCTION_STARTS_FROM_B1 As Boolean = True  ' True: 最初の判定対象がfunctionならB1開始にする
+Public Type ConditionalBranchCheckerUiOptions
+    Enabled As Boolean
+    FeatureName As String
+    WorkbookPath As String
+    OverrideLeadingFunctionStartsFromB1 As Boolean
+    LeadingFunctionStartsFromB1 As Boolean
+End Type
 
+Private mUiOptions As ConditionalBranchCheckerUiOptions
 Private mTemplateSnapshotSheet As Worksheet
 Private mPreAllocatedWritableLastRow As Long
+
+Public Sub RunMainWithUiOptions(ByRef options As ConditionalBranchCheckerUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalBranchCheckerUiOptions
+    Dim defaults As ConditionalBranchCheckerUiOptions
+
+    defaults.Enabled = True
+    defaults.FeatureName = vbNullString
+    defaults.WorkbookPath = vbNullString
+    defaults.OverrideLeadingFunctionStartsFromB1 = True
+    defaults.LeadingFunctionStartsFromB1 = LEADING_FUNCTION_STARTS_FROM_B1
+
+    CreateConditionalBranchCheckerUiOptionsForForm = defaults
+End Function
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.FeatureName = vbNullString
+    mUiOptions.WorkbookPath = vbNullString
+    mUiOptions.OverrideLeadingFunctionStartsFromB1 = False
+    mUiOptions.LeadingFunctionStartsFromB1 = False
+End Sub
 
 Public Sub RunMain()
     On Error GoTo ErrorHandler
@@ -108,13 +146,24 @@ End Sub
 Private Function PromptFeatureName() As String
     ' 機能名の入力を受け取り、前後空白を除去して返す
     Dim inputValue As String
+
+    If mUiOptions.Enabled Then
+        PromptFeatureName = Trim$(mUiOptions.FeatureName)
+        Exit Function
+    End If
+
     inputValue = InputBox("機能名を入力してください。", "機能名入力")
     PromptFeatureName = Trim$(inputValue)
 End Function
 
 Private Function SelectTargetWorkbookPath() As String
-    ' .xlsx を選択させる簡易ダイアログ
+    '.xlsx を選択させる簡易ダイアログ
     Dim selectedPath As Variant
+
+    If mUiOptions.Enabled Then
+        SelectTargetWorkbookPath = Trim$(mUiOptions.WorkbookPath)
+        Exit Function
+    End If
 
     selectedPath = Application.GetOpenFilename( _
         FileFilter:="Excel ブック (*.xlsx),*.xlsx", _
@@ -334,6 +383,13 @@ Private Function FindIndividualSheet(ByVal targetWorkbook As Workbook, ByVal fea
     Next ws
 End Function
 
+Private Function IsLeadingFunctionStartsFromB1Enabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideLeadingFunctionStartsFromB1 Then
+        IsLeadingFunctionStartsFromB1Enabled = mUiOptions.LeadingFunctionStartsFromB1
+    Else
+        IsLeadingFunctionStartsFromB1Enabled = LEADING_FUNCTION_STARTS_FROM_B1
+    End If
+End Function
 Private Sub MarkCurrentSourceSheet( _
     ByVal sourceSheet As Worksheet, _
     ByRef sourceTextValues As Variant, _
@@ -389,7 +445,7 @@ Private Function ShouldStartFunctionSectionFromB1( _
     Dim rowIndex As Long
     Dim lineText As String
 
-    If Not LEADING_FUNCTION_STARTS_FROM_B1 Then Exit Function
+    If Not IsLeadingFunctionStartsFromB1Enabled() Then Exit Function
 
     For rowIndex = 1 To lastRow
         lineText = GetCellTextFromValue(sourceTextValues(rowIndex, 1))
@@ -1524,6 +1580,8 @@ Private Function EventCollection(ByVal ev As Collection, ByVal keyName As String
 NoCollection:
     Set EventCollection = Nothing
 End Function
+
+
 
 
 

@@ -66,9 +66,143 @@ Private Const EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS As String = "A4,A5,A1-1,A2-3-1
 ' 例: #f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080
 Public Const OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED As Boolean = True ' True: 灰色塗りつぶしセルを読み飛ばす / False: 色判定を行わない
 Private Const SOURCE_SKIP_FILL_COLOR_HEX_CODES As String = "#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080" ' 比較対象カラーコード（#RRGGBB）
+Public Type BetaEvidenceUiOptions
+    Enabled As Boolean
+    SourceWorkbookPath As String
+    InputFileName As String
 
+    UseSlotHeight As Boolean
+    SlotHeight As Long
+
+    UseOutputSheetFilter As Boolean
+    OutputSheetFilterText As String
+
+    OverrideTopBorderEnabled As Boolean
+    TopBorderEnabled As Boolean
+
+    OverrideSlotHeightPromptEnabled As Boolean
+    SlotHeightPromptEnabled As Boolean
+
+    OverrideOutputSheetSelectionPromptEnabled As Boolean
+    OutputSheetSelectionPromptEnabled As Boolean
+
+    OverrideExcludeOutputSheetByPatternEnabled As Boolean
+    ExcludeOutputSheetByPatternEnabled As Boolean
+
+    UseExcludedOutputSheetNamePatterns As Boolean
+    ExcludedOutputSheetNamePatterns As String
+
+    OverrideSkipGrayFilledSourceCellEnabled As Boolean
+    SkipGrayFilledSourceCellEnabled As Boolean
+
+    UseSourceSkipFillColorHexCodes As Boolean
+    SourceSkipFillColorHexCodes As String
+
+    OverrideRightBorderEnabled As Boolean
+    RightBorderEnabled As Boolean
+
+    UseRightBorderTargetCol As Boolean
+    RightBorderTargetCol As Long
+End Type
+
+Private mUiOptions As BetaEvidenceUiOptions
 Private mSlotHeight As Long ' スロット行オフセット（未指定時は既定値を使用）
 Private mSkipSourceFillColorMap As Object ' 参照元塗りつぶしスキップ色マップ
+
+Public Sub RunMainWithUiOptions(ByRef options As BetaEvidenceUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateBetaEvidenceUiOptionsForForm() As BetaEvidenceUiOptions
+    Dim options As BetaEvidenceUiOptions
+
+    InitializeBetaEvidenceUiOptionsForForm options
+    CreateBetaEvidenceUiOptionsForForm = options
+End Function
+
+Public Sub InitializeBetaEvidenceUiOptionsForForm(ByRef options As BetaEvidenceUiOptions)
+    options.Enabled = True
+    options.SourceWorkbookPath = vbNullString
+    options.InputFileName = vbNullString
+
+    options.UseSlotHeight = True
+    options.SlotHeight = SLOT_HEIGHT
+
+    options.UseOutputSheetFilter = True
+    options.OutputSheetFilterText = vbNullString
+
+    options.OverrideTopBorderEnabled = True
+    options.TopBorderEnabled = OPTION_TOP_BORDER_ENABLED
+
+    options.OverrideSlotHeightPromptEnabled = True
+    options.SlotHeightPromptEnabled = False
+
+    options.OverrideOutputSheetSelectionPromptEnabled = True
+    options.OutputSheetSelectionPromptEnabled = False
+
+    options.OverrideExcludeOutputSheetByPatternEnabled = True
+    options.ExcludeOutputSheetByPatternEnabled = OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED
+
+    options.UseExcludedOutputSheetNamePatterns = True
+    options.ExcludedOutputSheetNamePatterns = EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS
+
+    options.OverrideSkipGrayFilledSourceCellEnabled = True
+    options.SkipGrayFilledSourceCellEnabled = OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED
+
+    options.UseSourceSkipFillColorHexCodes = True
+    options.SourceSkipFillColorHexCodes = SOURCE_SKIP_FILL_COLOR_HEX_CODES
+
+    options.OverrideRightBorderEnabled = True
+    options.RightBorderEnabled = OPTION_RIGHT_BORDER_ENABLED
+
+    options.UseRightBorderTargetCol = True
+    options.RightBorderTargetCol = RIGHT_BORDER_TARGET_COL
+End Sub
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.SourceWorkbookPath = vbNullString
+    mUiOptions.InputFileName = vbNullString
+
+    mUiOptions.UseSlotHeight = False
+    mUiOptions.SlotHeight = 0
+
+    mUiOptions.UseOutputSheetFilter = False
+    mUiOptions.OutputSheetFilterText = vbNullString
+
+    mUiOptions.OverrideTopBorderEnabled = False
+    mUiOptions.TopBorderEnabled = False
+
+    mUiOptions.OverrideSlotHeightPromptEnabled = False
+    mUiOptions.SlotHeightPromptEnabled = False
+
+    mUiOptions.OverrideOutputSheetSelectionPromptEnabled = False
+    mUiOptions.OutputSheetSelectionPromptEnabled = False
+
+    mUiOptions.OverrideExcludeOutputSheetByPatternEnabled = False
+    mUiOptions.ExcludeOutputSheetByPatternEnabled = False
+
+    mUiOptions.UseExcludedOutputSheetNamePatterns = False
+    mUiOptions.ExcludedOutputSheetNamePatterns = vbNullString
+
+    mUiOptions.OverrideSkipGrayFilledSourceCellEnabled = False
+    mUiOptions.SkipGrayFilledSourceCellEnabled = False
+
+    mUiOptions.UseSourceSkipFillColorHexCodes = False
+    mUiOptions.SourceSkipFillColorHexCodes = vbNullString
+
+    mUiOptions.OverrideRightBorderEnabled = False
+    mUiOptions.RightBorderEnabled = False
+
+    mUiOptions.UseRightBorderTargetCol = False
+    mUiOptions.RightBorderTargetCol = 0
+End Sub
 
 ' ============================================================
 ' エントリポイント
@@ -137,13 +271,25 @@ Public Sub RunMain()
         Exit Sub
     End If
 
-    If OPTION_SLOT_HEIGHT_PROMPT_ENABLED Then
+    If mUiOptions.Enabled Then
+        If mUiOptions.UseSlotHeight And mUiOptions.SlotHeight > 0 Then
+            mSlotHeight = mUiOptions.SlotHeight
+        Else
+            mSlotHeight = SLOT_HEIGHT
+        End If
+    ElseIf IsSlotHeightPromptEnabled() Then
         mSlotHeight = PromptSlotHeightOrDefault(SLOT_HEIGHT)
     Else
         mSlotHeight = SLOT_HEIGHT ' 入力ダイアログOFF時は既定オフセットをそのまま使う
     End If
 
-    If OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED Then
+    If mUiOptions.Enabled Then
+        If mUiOptions.UseOutputSheetFilter Then
+            Set outputSheetFilter = ParseOutputSheetFilter(mUiOptions.OutputSheetFilterText)
+        Else
+            Set outputSheetFilter = Nothing
+        End If
+    ElseIf IsOutputSheetSelectionPromptEnabled() Then
         Set outputSheetFilter = PromptOutputSheetFilter()
     Else
         Set outputSheetFilter = Nothing ' 入力ダイアログOFF時は全シートを出力対象にする
@@ -341,6 +487,11 @@ Private Function SelectTargetWorkbookPath() As String
     ' 参照設定依存を避けるため、FileDialog型ではなく Object で扱う
     Dim fd As Object
 
+    If mUiOptions.Enabled Then
+        SelectTargetWorkbookPath = Trim$(mUiOptions.SourceWorkbookPath)
+        Exit Function
+    End If
+
     On Error GoTo Fallback
 
     Set fd = Application.FileDialog(FILE_DIALOG_PICKER)
@@ -379,10 +530,14 @@ Private Function PromptInputFileName() As String
     ' 前後の空白は誤入力になりやすいため Trim する
     Dim s As String
 
+    If mUiOptions.Enabled Then
+        PromptInputFileName = Trim$(mUiOptions.InputFileName)
+        Exit Function
+    End If
+
     s = InputBox("入力ファイル名を入力してください（例: menu/mainmenu.php）", "入力ファイル名")
     PromptInputFileName = Trim$(s)
 End Function
-
 Private Function PromptSlotHeightOrDefault(ByVal defaultHeight As Long) As Long
     ' スロットの行オフセットを受け取る（空欄は既定値）
     Dim inputText As String
@@ -480,6 +635,78 @@ Private Function BuildOutputSheetFilterLabel(ByVal outputSheetFilter As Object) 
     End If
 End Function
 
+Private Function IsTopBorderEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideTopBorderEnabled Then
+        IsTopBorderEnabled = mUiOptions.TopBorderEnabled
+    Else
+        IsTopBorderEnabled = OPTION_TOP_BORDER_ENABLED
+    End If
+End Function
+
+Private Function IsSlotHeightPromptEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideSlotHeightPromptEnabled Then
+        IsSlotHeightPromptEnabled = mUiOptions.SlotHeightPromptEnabled
+    Else
+        IsSlotHeightPromptEnabled = OPTION_SLOT_HEIGHT_PROMPT_ENABLED
+    End If
+End Function
+
+Private Function IsOutputSheetSelectionPromptEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideOutputSheetSelectionPromptEnabled Then
+        IsOutputSheetSelectionPromptEnabled = mUiOptions.OutputSheetSelectionPromptEnabled
+    Else
+        IsOutputSheetSelectionPromptEnabled = OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED
+    End If
+End Function
+
+Private Function IsExcludeOutputSheetByPatternEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideExcludeOutputSheetByPatternEnabled Then
+        IsExcludeOutputSheetByPatternEnabled = mUiOptions.ExcludeOutputSheetByPatternEnabled
+    Else
+        IsExcludeOutputSheetByPatternEnabled = OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED
+    End If
+End Function
+
+Private Function GetExcludedOutputSheetNamePatterns() As String
+    If mUiOptions.Enabled And mUiOptions.UseExcludedOutputSheetNamePatterns Then
+        GetExcludedOutputSheetNamePatterns = CStr(mUiOptions.ExcludedOutputSheetNamePatterns)
+    Else
+        GetExcludedOutputSheetNamePatterns = EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS
+    End If
+End Function
+
+Private Function IsSkipGrayFilledSourceCellEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideSkipGrayFilledSourceCellEnabled Then
+        IsSkipGrayFilledSourceCellEnabled = mUiOptions.SkipGrayFilledSourceCellEnabled
+    Else
+        IsSkipGrayFilledSourceCellEnabled = OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED
+    End If
+End Function
+
+Private Function GetSourceSkipFillColorHexCodes() As String
+    If mUiOptions.Enabled And mUiOptions.UseSourceSkipFillColorHexCodes Then
+        GetSourceSkipFillColorHexCodes = CStr(mUiOptions.SourceSkipFillColorHexCodes)
+    Else
+        GetSourceSkipFillColorHexCodes = SOURCE_SKIP_FILL_COLOR_HEX_CODES
+    End If
+End Function
+
+Private Function IsRightBorderEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideRightBorderEnabled Then
+        IsRightBorderEnabled = mUiOptions.RightBorderEnabled
+    Else
+        IsRightBorderEnabled = OPTION_RIGHT_BORDER_ENABLED
+    End If
+End Function
+
+Private Function GetRightBorderTargetCol() As Long
+    If mUiOptions.Enabled And mUiOptions.UseRightBorderTargetCol Then
+        GetRightBorderTargetCol = mUiOptions.RightBorderTargetCol
+    Else
+        GetRightBorderTargetCol = RIGHT_BORDER_TARGET_COL
+    End If
+End Function
+
 Private Function IsSheetAllowedByFilter( _
     ByVal sheetName As String, _
     ByVal outputSheetFilter As Object) As Boolean
@@ -498,12 +725,12 @@ Private Function IsExcludedByOutputSheetPattern(ByVal sheetName As String) As Bo
     Dim patternText As String
     Dim i As Long
 
-    If Not OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED Then Exit Function
+    If Not IsExcludeOutputSheetByPatternEnabled() Then Exit Function
 
     normalizedName = Trim$(sheetName)
     If Len(normalizedName) = 0 Then Exit Function
 
-    rawPatterns = Replace(EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS, "，", ",")
+    rawPatterns = Replace(GetExcludedOutputSheetNamePatterns(), "，", ",")
     patterns = Split(rawPatterns, ",")
 
     For i = LBound(patterns) To UBound(patterns)
@@ -525,9 +752,9 @@ Private Function BuildSkipSourceFillColorMap() As Object
     Dim colorValue As Long
     Dim i As Long
 
-    If Not OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED Then Exit Function
+    If Not IsSkipGrayFilledSourceCellEnabled() Then Exit Function
 
-    rawText = Replace(SOURCE_SKIP_FILL_COLOR_HEX_CODES, "，", ",")
+    rawText = Replace(GetSourceSkipFillColorHexCodes(), "，", ",")
     rawItems = Split(rawText, ",")
 
     Set dict = CreateObject("Scripting.Dictionary")
@@ -1559,10 +1786,10 @@ Private Sub ApplyRightBorderToConfiguredColumn( _
     Dim targetCol As Long
     Dim borderRange As Range
 
-    If Not OPTION_RIGHT_BORDER_ENABLED Then Exit Sub
+    If Not IsRightBorderEnabled() Then Exit Sub
     If lastWrittenRow < FIRST_DEST_ROW Then Exit Sub
 
-    targetCol = RIGHT_BORDER_TARGET_COL
+    targetCol = GetRightBorderTargetCol()
     If targetCol < 1 Or targetCol > 16384 Then
         targetCol = 26
     End If
@@ -1589,7 +1816,7 @@ Private Sub ApplyTopBorderToConfirmedRow( _
     Dim borderRange As Range
 
     If targetRow = FIRST_DEST_ROW Then Exit Sub
-    If Not OPTION_TOP_BORDER_ENABLED Then Exit Sub ' OFF時は上罫線処理をスキップ
+    If Not IsTopBorderEnabled() Then Exit Sub ' OFF時は上罫線処理をスキップ
 
     aValue = destWs.Cells(targetRow, DEST_COL_A).Value
     bValue = destWs.Cells(targetRow, DEST_COL_B).Value
@@ -1671,6 +1898,9 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
+
+
+
 
 
 
