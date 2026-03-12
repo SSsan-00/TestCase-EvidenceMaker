@@ -48,9 +48,9 @@ Private Const MATCH_IDX_ROW As Long = 4
 Private Const SAVE_AS_FILTER As String = "Excel ブック (*.xlsx),*.xlsx"
 Public Type BetaTestCaseUiOptions
     Enabled As Boolean
-    FeatureId As String
-    UseOutputPath As Boolean
-    OutputPath As String
+    featureId As String
+    useOutputPath As Boolean
+    outputPath As String
 End Type
 
 Private mUiOptions As BetaTestCaseUiOptions
@@ -69,18 +69,18 @@ Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
     Dim defaults As BetaTestCaseUiOptions
 
     defaults.Enabled = True
-    defaults.FeatureId = vbNullString
-    defaults.UseOutputPath = False
-    defaults.OutputPath = vbNullString
+    defaults.featureId = vbNullString
+    defaults.useOutputPath = False
+    defaults.outputPath = vbNullString
 
     CreateBetaTestCaseUiOptionsForForm = defaults
 End Function
 
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
-    mUiOptions.FeatureId = vbNullString
-    mUiOptions.UseOutputPath = False
-    mUiOptions.OutputPath = vbNullString
+    mUiOptions.featureId = vbNullString
+    mUiOptions.useOutputPath = False
+    mUiOptions.outputPath = vbNullString
 End Sub
 
 ' ============================================================
@@ -216,7 +216,7 @@ Private Function PromptFeatureId() As String
     Dim s As String
 
     If mUiOptions.Enabled Then
-        PromptFeatureId = Trim$(mUiOptions.FeatureId)
+        PromptFeatureId = Trim$(mUiOptions.featureId)
         Exit Function
     End If
 
@@ -234,8 +234,8 @@ Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As Stri
     defaultFileName = alpha & OUTPUT_FILE_SUFFIX & OUTPUT_FILE_EXT
 
     If mUiOptions.Enabled Then
-        If mUiOptions.UseOutputPath Then
-            DecideOutputPath = BuildUniquePath(mUiOptions.OutputPath)
+        If mUiOptions.useOutputPath Then
+            DecideOutputPath = BuildUniquePath(mUiOptions.outputPath)
             Exit Function
         End If
 
@@ -471,7 +471,7 @@ Private Function ReadColumnValues( _
         endRow = startRow
     End If
 
-    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).Value
+    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).value
 
     If startRow = endRow Then
         singleCell(1, 1) = rawValues
@@ -601,8 +601,8 @@ Private Sub FillCaseSheet( _
 
     ' 【共通】/【個別】シートの共通セル埋め。
     ' 仕様: BD1 は β、BD3 は入力した機能連番。
-    targetWs.Range(TARGET_ALPHA_CELL).Value = beta
-    targetWs.Range(TARGET_FEATURE_ID_CELL).Value = featureId
+    targetWs.Range(TARGET_ALPHA_CELL).value = beta
+    targetWs.Range(TARGET_FEATURE_ID_CELL).value = featureId
 End Sub
 
 Private Sub FillSourceSheet( _
@@ -610,7 +610,7 @@ Private Sub FillSourceSheet( _
     ByVal gamma As String)
 
     ' 現行ソース（PHP）シートのセル埋め。
-    sourceWs.Range(TARGET_GAMMA_CELL).Value = gamma
+    sourceWs.Range(TARGET_GAMMA_CELL).value = gamma
 End Sub
 
 Private Function CopyTemplateSheet( _

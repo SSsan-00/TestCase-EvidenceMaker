@@ -57,7 +57,7 @@ Public Sub InstallMacroToolsUserForm()
     BuildMacroToolsFormLayout formComponent.Designer
 
     currentStep = "Attach UserForm code"
-    formComponent.CodeModule.AddFromString BuildMacroToolsFormCode()
+    formComponent.codeModule.AddFromString BuildMacroToolsFormCode()
 
     Dim launcherComponent As Object
     currentStep = "Create launcher module"
@@ -65,7 +65,7 @@ Public Sub InstallMacroToolsUserForm()
     launcherComponent.Name = "modMacroToolsFormEntry"
 
     currentStep = "Attach launcher code"
-    launcherComponent.CodeModule.AddFromString BuildMacroToolsLauncherCode()
+    launcherComponent.codeModule.AddFromString BuildMacroToolsLauncherCode()
 
     MsgBox "UserForm のインストールが完了しました。" & vbCrLf & _
            "実行: OpenMacroToolsForm", vbInformation
@@ -91,7 +91,7 @@ Private Function GetComponentByName(ByVal vbProj As Object, ByVal componentName 
 End Function
 
 Private Sub PrepareFormComponent(ByVal formComponent As Object)
-    ResetCodeModule formComponent.CodeModule
+    ResetCodeModule formComponent.codeModule
     ResetDesignerControls formComponent.Designer
 End Sub
 
@@ -110,7 +110,7 @@ Private Sub ResetDesignerControls(ByVal formDesigner As Object)
     Dim controlName As String
 
     For i = CLng(formDesigner.Controls.Count) - 1 To 0 Step -1
-        controlName = CStr(formDesigner.Controls.Item(i).Name)
+        controlName = CStr(formDesigner.Controls.item(i).Name)
         formDesigner.Controls.Remove controlName
     Next i
 
@@ -242,7 +242,7 @@ Private Sub BuildMacroToolsFormLayout(ByVal formDesigner As Object)
     SafeSetProperty formDesigner, "ControlBox", True
     ' レイアウトを縦方向に整理し、画面サイズ差分はスクロールで吸収する
     SafeSetProperty formDesigner, "ScrollBars", 2
-    SafeSetProperty formDesigner, "ScrollHeight", 900
+    SafeSetProperty formDesigner, "ScrollHeight", 930
     SafeSetProperty formDesigner, "ScrollWidth", 670
 
     Dim frameEvidence As Object
@@ -253,8 +253,8 @@ Private Sub BuildMacroToolsFormLayout(ByVal formDesigner As Object)
     stageName = "Create frames"
     Set frameEvidence = AddFrame(formDesigner, "fraEvidence", "エビデンス生成", 12, 12, 650, 300)
     Set frameTestCase = AddFrame(formDesigner, "fraTestCase", "テストケース生成", 12, 320, 650, 90)
-    Set frameConditional = AddFrame(formDesigner, "fraConditional", "条件分岐チェック", 12, 418, 650, 136)
-    Set frameEscape = AddFrame(formDesigner, "fraEscape", "エスケープ箇所マーキング", 12, 562, 650, 240)
+    Set frameConditional = AddFrame(formDesigner, "fraConditional", "条件分岐チェック", 12, 418, 650, 176)
+    Set frameEscape = AddFrame(formDesigner, "fraEscape", "エスケープ箇所マーキング", 12, 602, 650, 240)
 
     stageName = "Build Evidence controls"
     BuildEvidenceControls frameEvidence
@@ -266,7 +266,7 @@ Private Sub BuildMacroToolsFormLayout(ByVal formDesigner As Object)
     BuildEscapeControls frameEscape
 
     stageName = "Create close button"
-    AddButton formDesigner, "btnCloseForm", "閉じる", 562, 810, 100, 24
+    AddButton formDesigner, "btnCloseForm", "閉じる", 562, 850, 100, 24
     Exit Sub
 
 LayoutError:
@@ -279,35 +279,37 @@ Private Sub BuildEvidenceControls(ByVal parent As Object)
     AddTextBox parent, "txtSourcePath", "", 112, 16, 460, 18
     AddButton parent, "btnBrowseEvidenceSource", "...", 580, 15, 24, 20
 
-    AddLabel parent, "lblInputFileName", "入力ファイル名", 12, 48, 96, 16
-    AddTextBox parent, "txtInputFileName", "", 112, 46, 360, 18
+    AddLabel parent, "lblInputFileName", "入力ファイル名（例: foo/bar.php）", 12, 48, 126, 16
+    AddTextBox parent, "txtInputFileName", "", 144, 46, 148, 18
 
-    AddLabel parent, "lblSlotHeight", "行オフセット", 12, 78, 96, 16
-    AddTextBox parent, "txtSlotHeight", "50", 112, 76, 56, 18
+    AddLabel parent, "lblSlotHeight", "行オフセット", 320, 48, 72, 16
+    AddTextBox parent, "txtSlotHeight", "50", 396, 46, 48, 18
 
-    AddLabel parent, "lblOutputFilter", "出力シート絞り込み", 206, 78, 96, 16
-    AddTextBox parent, "txtOutputFilter", "", 306, 76, 246, 18
+    AddLabel parent, "lblNewSideCols", "現行側列数", 456, 48, 72, 16
+    AddTextBox parent, "txtEvidenceNewSideCols", "15", 532, 46, 40, 18
 
-    AddCheckBox parent, "chkTopBorder", "上罫線を有効化", True, 12, 108, 150, 16
-    AddCheckBox parent, "chkExcludePattern", "除外パターンを有効化", True, 182, 108, 160, 16
+    AddLabel parent, "lblOutputFilter", "出力シート絞り込み", 12, 78, 126, 16
+    AddTextBox parent, "txtOutputFilter", "", 144, 76, 148, 18
 
-    AddLabel parent, "lblExcludePatterns", "除外パターン", 12, 136, 96, 16
-    AddTextBox parent, "txtExcludePatterns", "A4,A5,A1-1,A2-3-1", 112, 134, 460, 18
+    AddLabel parent, "lblExcludePatterns", "除外パターン", 320, 78, 72, 16
+    AddTextBox parent, "txtExcludePatterns", "A4,A5,A1-1,A2-3-1", 396, 76, 180, 18
 
-    AddCheckBox parent, "chkSkipGray", "灰色塗りつぶしセルを読み飛ばす", True, 12, 164, 220, 16
-    AddLabel parent, "lblSkipColors", "読み飛ばし色 (#RRGGBB)", 12, 190, 130, 16
-    AddTextBox parent, "txtSkipColors", "#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080", 146, 188, 430, 18
+    AddCheckBox parent, "chkTopBorder", "横罫線を有効化", True, 12, 108, 124, 16
+    AddCheckBox parent, "chkRightBorder", "縦罫線を有効化", True, 148, 108, 124, 16
+    AddCheckBox parent, "chkClearOldHeader", "R2 の「旧」を消す", False, 284, 108, 124, 16
+    AddCheckBox parent, "chkMatchOldSideCols", "旧側列数も現行側に追従", False, 420, 108, 168, 16
 
-    AddCheckBox parent, "chkRightBorder", "右罫線を有効化", True, 12, 218, 140, 16
-    AddCheckBox parent, "chkUseRightBorderCol", "右罫線列名を指定", True, 170, 218, 140, 16
-    AddTextBox parent, "txtRightBorderCol", "Q", 320, 216, 40, 18
+    AddCheckBox parent, "chkExcludePattern", "除外パターンを有効化", True, 12, 138, 170, 16
+    AddCheckBox parent, "chkSkipGray", "グレーで塗りつぶしたセルを読み飛ばす", True, 194, 138, 220, 16
+    AddLabel parent, "lblSkipColors", "読み飛ばし色 (#RRGGBB)", 12, 166, 130, 16
+    AddTextBox parent, "txtSkipColors", "#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080", 146, 164, 430, 18
 
     AddButton parent, "btnRunEvidence", "実行（エビデンス生成）", 470, 252, 162, 24
 End Sub
 
 Private Sub BuildTestCaseControls(ByVal parent As Object)
-    AddLabel parent, "lblFeatureId", "機能ID", 12, 28, 80, 16
-    AddTextBox parent, "txtFeatureId", "", 96, 26, 360, 18
+    AddLabel parent, "lblFeatureId", "機能連番（例: S999-99-99）", 12, 28, 120, 16
+    AddTextBox parent, "txtFeatureId", "", 138, 26, 300, 18
 
     AddButton parent, "btnRunTestCase", "実行（テストケース生成）", 470, 24, 162, 24
 End Sub
@@ -316,24 +318,29 @@ Private Sub BuildConditionalControls(ByVal parent As Object)
     AddLabel parent, "lblCondFeatureName", "機能名", 12, 24, 80, 16
     AddTextBox parent, "txtCondFeatureName", "", 96, 22, 440, 18
 
-    AddLabel parent, "lblCondWorkbookPath", "対象ブックパス", 12, 52, 80, 16
+    AddLabel parent, "lblCondWorkbookPath", "参照元ブックパス", 12, 52, 80, 16
     AddTextBox parent, "txtCondWorkbookPath", "", 96, 50, 440, 18
     AddButton parent, "btnBrowseConditionalWorkbook", "...", 540, 49, 24, 20
 
     AddCheckBox parent, "chkLeadingFunctionB1", "先頭FunctionをB1開始にする", True, 12, 80, 210, 16
-    AddButton parent, "btnRunConditional", "実行（条件分岐チェック）", 470, 104, 162, 24
+    AddCheckBox parent, "chkCondWriteDash", "非Function行に B1- 形式を書き込む", True, 12, 104, 220, 16
+    AddCheckBox parent, "chkCondMarkFill", "マーキングセルを塗りつぶす", False, 12, 128, 170, 16
+    AddLabel parent, "lblCondMarkFillColor", "塗りつぶし色", 210, 128, 72, 16
+    AddTextBox parent, "txtCondMarkFillColor", "#FFF2CC", 288, 126, 90, 18
+
+    AddButton parent, "btnRunConditional", "実行（条件分岐チェック）", 470, 144, 162, 24
 End Sub
 
 Private Sub BuildEscapeControls(ByVal parent As Object)
-    AddLabel parent, "lblEscapeWorkbookPath", "対象ブックパス", 12, 24, 96, 16
+    AddLabel parent, "lblEscapeWorkbookPath", "参照元ブックパス", 12, 24, 96, 16
     AddTextBox parent, "txtEscapeWorkbookPath", "", 112, 22, 440, 18
     AddButton parent, "btnBrowseEscapeWorkbook", "...", 556, 21, 24, 20
 
     AddLabel parent, "lblCompletionMessage", "完了メッセージ", 12, 52, 96, 16
-    AddTextBox parent, "txtCompletionMessage", "SQLインジェクション対策済み", 112, 50, 320, 18
+    AddTextBox parent, "txtCompletionMessage", "SQLインジェクション対策済み", 112, 50, 440, 18
 
     AddLabel parent, "lblPrefixes", "エスケープ関数一覧", 12, 80, 96, 16
-    AddTextBox parent, "txtPrefixes", "sqlS,sqlN", 112, 78, 320, 18
+    AddTextBox parent, "txtPrefixes", "sqlS,sqlN", 112, 78, 440, 18
 
     AddLabel parent, "lblFillTarget", "塗りつぶし対象", 12, 112, 120, 16
     AddOptionButton parent, "optFillNone", "塗りつぶしなし", False, 136, 110, 90, 16
@@ -358,7 +365,7 @@ Private Function AddFrame( _
 
     Dim ctl As Object
     Set ctl = AddControlSafe(parent, "Forms.Frame.1", controlName)
-    ctl.Caption = caption
+    ctl.caption = caption
     ctl.Left = leftPos
     ctl.Top = topPos
     ctl.Width = widthValue
@@ -377,7 +384,7 @@ Private Sub AddLabel( _
 
     Dim ctl As Object
     Set ctl = AddControlSafe(parent, "Forms.Label.1", controlName)
-    ctl.Caption = caption
+    ctl.caption = caption
     ctl.Left = leftPos
     ctl.Top = topPos
     ctl.Width = widthValue
@@ -415,8 +422,8 @@ Private Sub AddCheckBox( _
 
     Dim ctl As Object
     Set ctl = AddControlSafe(parent, "Forms.CheckBox.1", controlName)
-    ctl.Caption = caption
-    ctl.Value = initialValue
+    ctl.caption = caption
+    ctl.value = initialValue
     ctl.Left = leftPos
     ctl.Top = topPos
     ctl.Width = widthValue
@@ -435,8 +442,8 @@ Private Sub AddOptionButton( _
 
     Dim ctl As Object
     Set ctl = AddControlSafe(parent, "Forms.OptionButton.1", controlName)
-    ctl.Caption = caption
-    ctl.Value = initialValue
+    ctl.caption = caption
+    ctl.value = initialValue
     ctl.Left = leftPos
     ctl.Top = topPos
     ctl.Width = widthValue
@@ -454,7 +461,7 @@ Private Sub AddButton( _
 
     Dim ctl As Object
     Set ctl = AddControlSafe(parent, "Forms.CommandButton.1", controlName)
-    ctl.Caption = caption
+    ctl.caption = caption
     ctl.Left = leftPos
     ctl.Top = topPos
     ctl.Width = widthValue
@@ -483,10 +490,12 @@ Private Function BuildMacroToolsFormCode() As String
     AppendLine codeText, "Option Explicit"
     AppendLine codeText, ""
     AppendLine codeText, "Private Const DEFAULT_SLOT_HEIGHT As Long = 50"
-    AppendLine codeText, "Private Const DEFAULT_RIGHT_BORDER_COL As Long = 17"
+    AppendLine codeText, "Private Const DEFAULT_EVIDENCE_NEW_SIDE_COL_COUNT As Long = 15"
     AppendLine codeText, ""
     AppendLine codeText, "Private Sub UserForm_Initialize()"
-    AppendLine codeText, "    chkUseRightBorderCol_Click"
+    AppendLine codeText, "    chkExcludePattern_Click"
+    AppendLine codeText, "    chkSkipGray_Click"
+    AppendLine codeText, "    chkCondMarkFill_Click"
     AppendLine codeText, "End Sub"
     AppendLine codeText, ""
     AppendLine codeText, "Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)"
@@ -498,8 +507,19 @@ Private Function BuildMacroToolsFormCode() As String
     AppendLine codeText, "    Unload Me"
     AppendLine codeText, "End Sub"
     AppendLine codeText, ""
-    AppendLine codeText, "Private Sub chkUseRightBorderCol_Click()"
-    AppendLine codeText, "    Me.txtRightBorderCol.Enabled = CBool(Me.chkUseRightBorderCol.Value)"
+    AppendLine codeText, "Private Sub chkExcludePattern_Click()"
+    AppendLine codeText, "    Me.lblExcludePatterns.Enabled = CBool(Me.chkExcludePattern.Value)"
+    AppendLine codeText, "    Me.txtExcludePatterns.Enabled = CBool(Me.chkExcludePattern.Value)"
+    AppendLine codeText, "End Sub"
+    AppendLine codeText, ""
+    AppendLine codeText, "Private Sub chkSkipGray_Click()"
+    AppendLine codeText, "    Me.lblSkipColors.Enabled = CBool(Me.chkSkipGray.Value)"
+    AppendLine codeText, "    Me.txtSkipColors.Enabled = CBool(Me.chkSkipGray.Value)"
+    AppendLine codeText, "End Sub"
+    AppendLine codeText, ""
+    AppendLine codeText, "Private Sub chkCondMarkFill_Click()"
+    AppendLine codeText, "    Me.txtCondMarkFillColor.Enabled = CBool(Me.chkCondMarkFill.Value)"
+    AppendLine codeText, "    Me.lblCondMarkFillColor.Enabled = CBool(Me.chkCondMarkFill.Value)"
     AppendLine codeText, "End Sub"
     AppendLine codeText, ""
     AppendLine codeText, "Private Sub btnBrowseEvidenceSource_Click()"
@@ -528,8 +548,9 @@ Private Function BuildMacroToolsFormCode() As String
     AppendLine codeText, "        skipGrayFilledSourceCellEnabled:=CBool(Me.chkSkipGray.Value), _"
     AppendLine codeText, "        sourceSkipFillColorHexCodes:=Trim$(CStr(Me.txtSkipColors.Value)), _"
     AppendLine codeText, "        rightBorderEnabled:=CBool(Me.chkRightBorder.Value), _"
-    AppendLine codeText, "        useRightBorderTargetCol:=CBool(Me.chkUseRightBorderCol.Value), _"
-    AppendLine codeText, "        rightBorderTargetCol:=ReadColumnIndexOrDefault(CStr(Me.txtRightBorderCol.Value), DEFAULT_RIGHT_BORDER_COL)"
+    AppendLine codeText, "        clearOldHeaderTextEnabled:=CBool(Me.chkClearOldHeader.Value), _"
+    AppendLine codeText, "        evidenceNewSideColCount:=ReadLongOrDefault(CStr(Me.txtEvidenceNewSideCols.Value), DEFAULT_EVIDENCE_NEW_SIDE_COL_COUNT), _"
+    AppendLine codeText, "        matchOldSideColCountToNewSide:=CBool(Me.chkMatchOldSideCols.Value)"
     AppendLine codeText, "End Sub"
     AppendLine codeText, ""
     AppendLine codeText, "Private Sub btnRunTestCase_Click()"
@@ -543,7 +564,10 @@ Private Function BuildMacroToolsFormCode() As String
     AppendLine codeText, "    MacroUserFormBridge.RunConditionalBranchCheckerFromForm _"
     AppendLine codeText, "        featureName:=Trim$(CStr(Me.txtCondFeatureName.Value)), _"
     AppendLine codeText, "        workbookPath:=Trim$(CStr(Me.txtCondWorkbookPath.Value)), _"
-    AppendLine codeText, "        leadingFunctionStartsFromB1:=CBool(Me.chkLeadingFunctionB1.Value)"
+    AppendLine codeText, "        leadingFunctionStartsFromB1:=CBool(Me.chkLeadingFunctionB1.Value), _"
+    AppendLine codeText, "        markNonFunctionLineWithDash:=CBool(Me.chkCondWriteDash.Value), _"
+    AppendLine codeText, "        markFillEnabled:=CBool(Me.chkCondMarkFill.Value), _"
+    AppendLine codeText, "        markFillColorHex:=Trim$(CStr(Me.txtCondMarkFillColor.Value))"
     AppendLine codeText, "End Sub"
     AppendLine codeText, ""
     AppendLine codeText, "Private Sub btnRunEscape_Click()"
@@ -581,57 +605,6 @@ Private Function BuildMacroToolsFormCode() As String
     AppendLine codeText, "        ResolveOnlyAValueRowFillTarget = ""Right"""
     AppendLine codeText, "    Else"
     AppendLine codeText, "        ResolveOnlyAValueRowFillTarget = ""Both"""
-    AppendLine codeText, "    End If"
-    AppendLine codeText, "End Function"
-    AppendLine codeText, ""
-    AppendLine codeText, ""
-    AppendLine codeText, "Private Function ReadColumnIndexOrDefault(ByVal textValue As String, ByVal defaultValue As Long) As Long"
-    AppendLine codeText, "    Dim s As String"
-    AppendLine codeText, "    Dim i As Long"
-    AppendLine codeText, "    Dim ch As Integer"
-    AppendLine codeText, "    Dim v As Long"
-    AppendLine codeText, ""
-    AppendLine codeText, "    s = UCase$(Trim$(textValue))"
-    AppendLine codeText, "    If Len(s) = 0 Then"
-    AppendLine codeText, "        ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "        Exit Function"
-    AppendLine codeText, "    End If"
-    AppendLine codeText, ""
-    AppendLine codeText, "    If Left$(s, 1) = ""$"" Then s = Mid$(s, 2)"
-    AppendLine codeText, "    If Len(s) = 0 Then"
-    AppendLine codeText, "        ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "        Exit Function"
-    AppendLine codeText, "    End If"
-    AppendLine codeText, ""
-    AppendLine codeText, "    ' 互換のため数値入力も受け付ける"
-    AppendLine codeText, "    If IsNumeric(s) Then"
-    AppendLine codeText, "        v = CLng(Val(s))"
-    AppendLine codeText, "        If v >= 1 And v <= 16384 Then"
-    AppendLine codeText, "            ReadColumnIndexOrDefault = v"
-    AppendLine codeText, "        Else"
-    AppendLine codeText, "            ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "        End If"
-    AppendLine codeText, "        Exit Function"
-    AppendLine codeText, "    End If"
-    AppendLine codeText, ""
-    AppendLine codeText, "    v = 0"
-    AppendLine codeText, "    For i = 1 To Len(s)"
-    AppendLine codeText, "        ch = Asc(Mid$(s, i, 1))"
-    AppendLine codeText, "        If ch < 65 Or ch > 90 Then"
-    AppendLine codeText, "            ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "            Exit Function"
-    AppendLine codeText, "        End If"
-    AppendLine codeText, "        v = v * 26 + (ch - 64)"
-    AppendLine codeText, "        If v > 16384 Then"
-    AppendLine codeText, "            ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "            Exit Function"
-    AppendLine codeText, "        End If"
-    AppendLine codeText, "    Next i"
-    AppendLine codeText, ""
-    AppendLine codeText, "    If v <= 0 Then"
-    AppendLine codeText, "        ReadColumnIndexOrDefault = defaultValue"
-    AppendLine codeText, "    Else"
-    AppendLine codeText, "        ReadColumnIndexOrDefault = v"
     AppendLine codeText, "    End If"
     AppendLine codeText, "End Function"
     AppendLine codeText, ""

@@ -20,12 +20,21 @@ Private Const SHEET_KEY_CURRENT_SOURCE As String = "現行ソース"
 Private Const SHEET_KEY_INDIVIDUAL_PREFIX As String = "【個別】"
 Private Const TEMPLATE_SNAPSHOT_SHEET_PREFIX As String = "__TMPROW15_"
 Private Const LEADING_FUNCTION_STARTS_FROM_B1 As Boolean = True  ' True: 最初の判定対象がfunctionならB1開始にする
+Private Const MARK_NON_FUNCTION_LINE_WITH_DASH As Boolean = True  ' True: function以外の対象行へ B{n}- を書き込む / False: function行だけ B{n} を書き込む
+Private Const MARK_FILL_ENABLED As Boolean = False  ' True: マーキング対象のB列セルを塗りつぶす / False: 塗りつぶさない
+Private Const MARK_FILL_COLOR_HEX As String = "#FFF2CC"  ' 塗りつぶし色（#RRGGBB / 0xRRGGBB）
 Public Type ConditionalBranchCheckerUiOptions
     Enabled As Boolean
-    FeatureName As String
-    WorkbookPath As String
+    featureName As String
+    workbookPath As String
     OverrideLeadingFunctionStartsFromB1 As Boolean
-    LeadingFunctionStartsFromB1 As Boolean
+    leadingFunctionStartsFromB1 As Boolean
+    OverrideMarkNonFunctionLineWithDash As Boolean
+    markNonFunctionLineWithDash As Boolean
+    OverrideMarkFillEnabled As Boolean
+    markFillEnabled As Boolean
+    UseMarkFillColorHex As Boolean
+    markFillColorHex As String
 End Type
 
 Private mUiOptions As ConditionalBranchCheckerUiOptions
@@ -46,20 +55,32 @@ Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalB
     Dim defaults As ConditionalBranchCheckerUiOptions
 
     defaults.Enabled = True
-    defaults.FeatureName = vbNullString
-    defaults.WorkbookPath = vbNullString
+    defaults.featureName = vbNullString
+    defaults.workbookPath = vbNullString
     defaults.OverrideLeadingFunctionStartsFromB1 = True
-    defaults.LeadingFunctionStartsFromB1 = LEADING_FUNCTION_STARTS_FROM_B1
+    defaults.leadingFunctionStartsFromB1 = LEADING_FUNCTION_STARTS_FROM_B1
+    defaults.OverrideMarkNonFunctionLineWithDash = True
+    defaults.markNonFunctionLineWithDash = MARK_NON_FUNCTION_LINE_WITH_DASH
+    defaults.OverrideMarkFillEnabled = True
+    defaults.markFillEnabled = MARK_FILL_ENABLED
+    defaults.UseMarkFillColorHex = True
+    defaults.markFillColorHex = MARK_FILL_COLOR_HEX
 
     CreateConditionalBranchCheckerUiOptionsForForm = defaults
 End Function
 
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
-    mUiOptions.FeatureName = vbNullString
-    mUiOptions.WorkbookPath = vbNullString
+    mUiOptions.featureName = vbNullString
+    mUiOptions.workbookPath = vbNullString
     mUiOptions.OverrideLeadingFunctionStartsFromB1 = False
-    mUiOptions.LeadingFunctionStartsFromB1 = False
+    mUiOptions.leadingFunctionStartsFromB1 = False
+    mUiOptions.OverrideMarkNonFunctionLineWithDash = False
+    mUiOptions.markNonFunctionLineWithDash = False
+    mUiOptions.OverrideMarkFillEnabled = False
+    mUiOptions.markFillEnabled = False
+    mUiOptions.UseMarkFillColorHex = False
+    mUiOptions.markFillColorHex = vbNullString
 End Sub
 
 Public Sub RunMain()
@@ -148,7 +169,7 @@ Private Function PromptFeatureName() As String
     Dim inputValue As String
 
     If mUiOptions.Enabled Then
-        PromptFeatureName = Trim$(mUiOptions.FeatureName)
+        PromptFeatureName = Trim$(mUiOptions.featureName)
         Exit Function
     End If
 
@@ -161,7 +182,7 @@ Private Function SelectTargetWorkbookPath() As String
     Dim selectedPath As Variant
 
     If mUiOptions.Enabled Then
-        SelectTargetWorkbookPath = Trim$(mUiOptions.WorkbookPath)
+        SelectTargetWorkbookPath = Trim$(mUiOptions.workbookPath)
         Exit Function
     End If
 
@@ -385,11 +406,57 @@ End Function
 
 Private Function IsLeadingFunctionStartsFromB1Enabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideLeadingFunctionStartsFromB1 Then
-        IsLeadingFunctionStartsFromB1Enabled = mUiOptions.LeadingFunctionStartsFromB1
+        IsLeadingFunctionStartsFromB1Enabled = mUiOptions.leadingFunctionStartsFromB1
     Else
         IsLeadingFunctionStartsFromB1Enabled = LEADING_FUNCTION_STARTS_FROM_B1
     End If
 End Function
+
+Private Function IsMarkNonFunctionLineWithDashEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideMarkNonFunctionLineWithDash Then
+        IsMarkNonFunctionLineWithDashEnabled = mUiOptions.markNonFunctionLineWithDash
+    Else
+        IsMarkNonFunctionLineWithDashEnabled = MARK_NON_FUNCTION_LINE_WITH_DASH
+    End If
+End Function
+
+Private Function IsMarkFillEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideMarkFillEnabled Then
+        IsMarkFillEnabled = mUiOptions.markFillEnabled
+    Else
+        IsMarkFillEnabled = MARK_FILL_ENABLED
+    End If
+End Function
+
+Private Function ResolveMarkFillColorHexRaw() As String
+    If mUiOptions.Enabled And mUiOptions.UseMarkFillColorHex Then
+        ResolveMarkFillColorHexRaw = CStr(mUiOptions.markFillColorHex)
+    Else
+        ResolveMarkFillColorHexRaw = MARK_FILL_COLOR_HEX
+    End If
+End Function
+
+Private Function ResolveMarkFillColor() As Long
+    ResolveMarkFillColor = HexColorTextToColorLongOrDefault(ResolveMarkFillColorHexRaw(), RGB(255, 242, 204))
+End Function
+
+Private Sub ResetCurrentSourceMarkColumn(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
+    If sourceSheet Is Nothing Then Exit Sub
+    If lastRow <= 0 Then Exit Sub
+
+    With sourceSheet.Range(sourceSheet.Cells(1, MARK_COL), sourceSheet.Cells(lastRow, MARK_COL))
+        .ClearContents
+        .Interior.Pattern = xlNone
+    End With
+End Sub
+
+Private Sub ApplyMarkCellFill(ByVal targetCell As Range, ByVal fillColor As Long)
+    If targetCell Is Nothing Then Exit Sub
+
+    targetCell.Interior.Pattern = xlSolid
+    targetCell.Interior.Color = fillColor
+End Sub
+
 Private Sub MarkCurrentSourceSheet( _
     ByVal sourceSheet As Worksheet, _
     ByRef sourceTextValues As Variant, _
@@ -398,13 +465,26 @@ Private Sub MarkCurrentSourceSheet( _
     ByVal leadingFunctionStartsAtB1 As Boolean)
 
     ' 現行ソースシートのC列を走査し、対象構文に応じてB列へセクション番号を設定する
-    ' - function 行      : B(次セクション番号)   例: B2（先頭function開始時は設定でB1）
-    ' - その他の対象構文 : B(現セクション番号)- 例: B1-
+    ' - function 行      : 常に B(次セクション番号) を設定する
+    ' - その他の対象構文 : オプションONなら B(現セクション番号)- を設定し、OFFなら文字列は書き込まない
+    ' - 塗りつぶし      : オプションONならマーキング対象のB列セルを指定色で塗りつぶす
     Dim rowIndex As Long
     Dim lineText As String
     Dim currentSectionIndex As Long
+    Dim markNonFunctionLineWithDash As Boolean
+    Dim markFillEnabled As Boolean
+    Dim markFillColor As Long
+    Dim markCell As Range
 
     markedCount = 0
+    ResetCurrentSourceMarkColumn sourceSheet, lastRow
+
+    markNonFunctionLineWithDash = IsMarkNonFunctionLineWithDashEnabled()
+    markFillEnabled = IsMarkFillEnabled()
+    If markFillEnabled Then
+        markFillColor = ResolveMarkFillColor()
+    End If
+
     If leadingFunctionStartsAtB1 Then
         currentSectionIndex = 0
     Else
@@ -426,10 +506,20 @@ Private Sub MarkCurrentSourceSheet( _
 
         If IsFunctionLine(lineText) Then
             currentSectionIndex = currentSectionIndex + 1
-            sourceSheet.Cells(rowIndex, MARK_COL).Value = "B" & CStr(currentSectionIndex)
+            Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
+            markCell.Value = "B" & CStr(currentSectionIndex)
+            If markFillEnabled Then
+                ApplyMarkCellFill markCell, markFillColor
+            End If
             markedCount = markedCount + 1
         ElseIf IsMarkTargetLine(lineText) Then
-            sourceSheet.Cells(rowIndex, MARK_COL).Value = "B" & CStr(currentSectionIndex) & "-"
+            Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
+            If markNonFunctionLineWithDash Then
+                markCell.Value = "B" & CStr(currentSectionIndex) & "-"
+            End If
+            If markFillEnabled Then
+                ApplyMarkCellFill markCell, markFillColor
+            End If
             markedCount = markedCount + 1
         End If
 
@@ -759,33 +849,33 @@ Private Sub WriteSectionHeader(ByVal ws As Worksheet, ByVal headerRow As Long, B
     ' 処理セクション見出し行の出力
     EnsureIndividualSheetWritableRow ws, headerRow
 
-    ws.Range("A" & CStr(headerRow)).Value = "B" & CStr(sectionIndex)
-    ws.Range("K" & CStr(headerRow)).Value = SYMBOL_FILLED
-    ws.Range("M" & CStr(headerRow)).Value = "処理（" & sectionName & "）"
+    ws.Range("A" & CStr(headerRow)).value = "B" & CStr(sectionIndex)
+    ws.Range("K" & CStr(headerRow)).value = SYMBOL_FILLED
+    ws.Range("M" & CStr(headerRow)).value = "処理（" & sectionName & "）"
 End Sub
 
 Private Sub WriteNormalBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection)
     ' if / 三項演算子 / for / foreach / while の共通形式
     EnsureIndividualSheetWritableRow ws, startRow
-    ws.Range("E" & CStr(startRow)).Value = "***"
-    ws.Range("L" & CStr(startRow)).Value = SYMBOL_EMPTY
-    ws.Range("N" & CStr(startRow)).Value = EventText(eventItem, "Title")
+    ws.Range("E" & CStr(startRow)).value = "***"
+    ws.Range("L" & CStr(startRow)).value = SYMBOL_EMPTY
+    ws.Range("N" & CStr(startRow)).value = EventText(eventItem, "Title")
 
     EnsureIndividualSheetWritableRow ws, startRow + 1
-    ws.Range("H" & CStr(startRow + 1)).Value = 1
-    ws.Range("M" & CStr(startRow + 1)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 1)).Value = EventText(eventItem, "Cond1")
-    ws.Range("AX" & CStr(startRow + 1)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 1)).Value = EventText(eventItem, "Result1")
-    ws.Range("CF" & CStr(startRow + 1)).Value = "1,4"
+    ws.Range("H" & CStr(startRow + 1)).value = 1
+    ws.Range("M" & CStr(startRow + 1)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(startRow + 1)).value = EventText(eventItem, "Cond1")
+    ws.Range("AX" & CStr(startRow + 1)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(startRow + 1)).value = EventText(eventItem, "Result1")
+    ws.Range("CF" & CStr(startRow + 1)).value = "1,4"
 
     EnsureIndividualSheetWritableRow ws, startRow + 3
-    ws.Range("H" & CStr(startRow + 3)).Value = 2
-    ws.Range("M" & CStr(startRow + 3)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 3)).Value = EventText(eventItem, "Cond2")
-    ws.Range("AX" & CStr(startRow + 3)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 3)).Value = EventText(eventItem, "Result2")
-    ws.Range("CF" & CStr(startRow + 3)).Value = "1,4"
+    ws.Range("H" & CStr(startRow + 3)).value = 2
+    ws.Range("M" & CStr(startRow + 3)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(startRow + 3)).value = EventText(eventItem, "Cond2")
+    ws.Range("AX" & CStr(startRow + 3)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(startRow + 3)).value = EventText(eventItem, "Result2")
+    ws.Range("CF" & CStr(startRow + 3)).value = "1,4"
 End Sub
 
 Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection) As Long
@@ -810,9 +900,9 @@ Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long,
     Set caseValues = EventCollection(eventItem, "CaseValues")
 
     EnsureIndividualSheetWritableRow ws, startRow
-    ws.Range("E" & CStr(startRow)).Value = "***"
-    ws.Range("L" & CStr(startRow)).Value = SYMBOL_EMPTY
-    ws.Range("N" & CStr(startRow)).Value = titleText
+    ws.Range("E" & CStr(startRow)).value = "***"
+    ws.Range("L" & CStr(startRow)).value = SYMBOL_EMPTY
+    ws.Range("N" & CStr(startRow)).value = titleText
 
     branchRow = startRow + 1
     seqNo = 1
@@ -844,12 +934,12 @@ Private Sub WriteSwitchBranchRow(ByVal ws As Worksheet, ByVal rowIndex As Long, 
     ' switchの分岐行（case/default相当）の共通出力
     EnsureIndividualSheetWritableRow ws, rowIndex
 
-    ws.Range("H" & CStr(rowIndex)).Value = seqNo
-    ws.Range("M" & CStr(rowIndex)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(rowIndex)).Value = conditionText
-    ws.Range("AX" & CStr(rowIndex)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(rowIndex)).Value = expectedText
-    ws.Range("CF" & CStr(rowIndex)).Value = "1,4"
+    ws.Range("H" & CStr(rowIndex)).value = seqNo
+    ws.Range("M" & CStr(rowIndex)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(rowIndex)).value = conditionText
+    ws.Range("AX" & CStr(rowIndex)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(rowIndex)).value = expectedText
+    ws.Range("CF" & CStr(rowIndex)).value = "1,4"
 End Sub
 
 Private Sub EnsureIndividualSheetWritableRow(ByVal ws As Worksheet, ByVal rowIndex As Long)
@@ -956,7 +1046,7 @@ Private Sub PrepareIndividualSheetTemplateSnapshot(ByVal individualSheet As Work
 
     ClearIndividualSheetTemplateSnapshot
 
-    Set wb = individualSheet.Parent
+    Set wb = individualSheet.parent
     Set snapshotSheet = wb.Worksheets.Add(After:=wb.Worksheets(wb.Worksheets.Count))
     snapshotSheet.Name = BuildTemplateSnapshotSheetName(wb)
 
@@ -1296,7 +1386,7 @@ Private Function ReadColumnValues( _
         endRow = startRow
     End If
 
-    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).Value
+    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).value
 
     If startRow = endRow Then
         singleCell(1, 1) = rawValues
@@ -1532,10 +1622,56 @@ Private Function ContainsText(ByVal sourceText As String, ByVal findText As Stri
     End If
 End Function
 
+Private Function HexColorTextToColorLongOrDefault(ByVal rawHex As String, ByVal defaultColor As Long) As Long
+    Dim t As String
+    Dim redPart As Long
+    Dim greenPart As Long
+    Dim bluePart As Long
+    Dim i As Long
+    Dim ch As String
+
+    t = UCase$(Trim$(rawHex))
+    If Len(t) = 0 Then
+        HexColorTextToColorLongOrDefault = defaultColor
+        Exit Function
+    End If
+
+    If Left$(t, 1) = "#" Then
+        t = Mid$(t, 2)
+    ElseIf Left$(t, 2) = "0X" Then
+        t = Mid$(t, 3)
+    End If
+
+    If Len(t) <> 6 Then
+        HexColorTextToColorLongOrDefault = defaultColor
+        Exit Function
+    End If
+
+    For i = 1 To 6
+        ch = Mid$(t, i, 1)
+        If InStr(1, "0123456789ABCDEF", ch, vbBinaryCompare) = 0 Then
+            HexColorTextToColorLongOrDefault = defaultColor
+            Exit Function
+        End If
+    Next i
+
+    On Error GoTo ParseError
+
+    redPart = CLng("&H" & Mid$(t, 1, 2))
+    greenPart = CLng("&H" & Mid$(t, 3, 2))
+    bluePart = CLng("&H" & Mid$(t, 5, 2))
+
+    HexColorTextToColorLongOrDefault = RGB(redPart, greenPart, bluePart)
+    Exit Function
+
+ParseError:
+    HexColorTextToColorLongOrDefault = defaultColor
+End Function
+
 Private Sub ActivateSheetForNextOpen(ByVal wb As Workbook, ByVal targetSheet As Worksheet)
     If wb Is Nothing Then Exit Sub
     If targetSheet Is Nothing Then Exit Sub
-    If Not (targetSheet.Parent Is wb) Then Exit Sub
+    If Not (targetSheet.parent Is wb) Then Exit Sub
 
     On Error Resume Next
     wb.Activate

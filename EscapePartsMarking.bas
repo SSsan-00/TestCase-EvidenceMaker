@@ -9,13 +9,13 @@ Public Type EscapePartsMarkingUiOptions
     Enabled As Boolean
     TargetWorkbookPath As String
     UseCompletionMessage As Boolean
-    CompletionMessage As String
+    completionMessage As String
     UseEscapeTargetPrefixesCsv As Boolean
-    EscapeTargetPrefixesCsv As String
+    escapeTargetPrefixesCsv As String
     UseOnlyAValueRowFillTarget As Boolean
-    OnlyAValueRowFillTarget As String
+    onlyAValueRowFillTarget As String
     UseOnlyAValueRowFillColorHex As Boolean
-    OnlyAValueRowFillColorHex As String
+    onlyAValueRowFillColorHex As String
 End Type
 
 Private mUiOptions As EscapePartsMarkingUiOptions
@@ -37,16 +37,16 @@ Public Function CreateEscapePartsMarkingUiOptionsForForm() As EscapePartsMarking
     defaults.TargetWorkbookPath = vbNullString
 
     defaults.UseCompletionMessage = True
-    defaults.CompletionMessage = DEFAULT_COMPLETION_MESSAGE
+    defaults.completionMessage = DEFAULT_COMPLETION_MESSAGE
 
     defaults.UseEscapeTargetPrefixesCsv = True
-    defaults.EscapeTargetPrefixesCsv = ESCAPE_TARGET_PREFIXES_CSV
+    defaults.escapeTargetPrefixesCsv = ESCAPE_TARGET_PREFIXES_CSV
 
     defaults.UseOnlyAValueRowFillTarget = True
-    defaults.OnlyAValueRowFillTarget = OPTION_ONLY_A_VALUE_ROW_FILL_TARGET
+    defaults.onlyAValueRowFillTarget = OPTION_ONLY_A_VALUE_ROW_FILL_TARGET
 
     defaults.UseOnlyAValueRowFillColorHex = True
-    defaults.OnlyAValueRowFillColorHex = ONLY_A_VALUE_ROW_FILL_COLOR_HEX
+    defaults.onlyAValueRowFillColorHex = ONLY_A_VALUE_ROW_FILL_COLOR_HEX
 
     CreateEscapePartsMarkingUiOptionsForForm = defaults
 End Function
@@ -55,13 +55,13 @@ Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.TargetWorkbookPath = vbNullString
     mUiOptions.UseCompletionMessage = False
-    mUiOptions.CompletionMessage = vbNullString
+    mUiOptions.completionMessage = vbNullString
     mUiOptions.UseEscapeTargetPrefixesCsv = False
-    mUiOptions.EscapeTargetPrefixesCsv = vbNullString
+    mUiOptions.escapeTargetPrefixesCsv = vbNullString
     mUiOptions.UseOnlyAValueRowFillTarget = False
-    mUiOptions.OnlyAValueRowFillTarget = vbNullString
+    mUiOptions.onlyAValueRowFillTarget = vbNullString
     mUiOptions.UseOnlyAValueRowFillColorHex = False
-    mUiOptions.OnlyAValueRowFillColorHex = vbNullString
+    mUiOptions.onlyAValueRowFillColorHex = vbNullString
 End Sub
 
 '============================================================
@@ -497,7 +497,7 @@ End Function
 '============================================================
 Private Function ResolveCompletionMessage() As String
     If mUiOptions.Enabled And mUiOptions.UseCompletionMessage Then
-        ResolveCompletionMessage = CStr(mUiOptions.CompletionMessage)
+        ResolveCompletionMessage = CStr(mUiOptions.completionMessage)
     Else
         ResolveCompletionMessage = DEFAULT_COMPLETION_MESSAGE
     End If
@@ -505,7 +505,7 @@ End Function
 
 Private Function ResolveEscapeTargetPrefixesCsvRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseEscapeTargetPrefixesCsv Then
-        ResolveEscapeTargetPrefixesCsvRaw = CStr(mUiOptions.EscapeTargetPrefixesCsv)
+        ResolveEscapeTargetPrefixesCsvRaw = CStr(mUiOptions.escapeTargetPrefixesCsv)
     Else
         ResolveEscapeTargetPrefixesCsvRaw = ESCAPE_TARGET_PREFIXES_CSV
     End If
@@ -513,7 +513,7 @@ End Function
 
 Private Function ResolveOnlyAValueRowFillTargetRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillTarget Then
-        ResolveOnlyAValueRowFillTargetRaw = CStr(mUiOptions.OnlyAValueRowFillTarget)
+        ResolveOnlyAValueRowFillTargetRaw = CStr(mUiOptions.onlyAValueRowFillTarget)
     Else
         ResolveOnlyAValueRowFillTargetRaw = OPTION_ONLY_A_VALUE_ROW_FILL_TARGET
     End If
@@ -521,7 +521,7 @@ End Function
 
 Private Function ResolveOnlyAValueRowFillColorHexRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillColorHex Then
-        ResolveOnlyAValueRowFillColorHexRaw = CStr(mUiOptions.OnlyAValueRowFillColorHex)
+        ResolveOnlyAValueRowFillColorHexRaw = CStr(mUiOptions.onlyAValueRowFillColorHex)
     Else
         ResolveOnlyAValueRowFillColorHexRaw = ONLY_A_VALUE_ROW_FILL_COLOR_HEX
     End If

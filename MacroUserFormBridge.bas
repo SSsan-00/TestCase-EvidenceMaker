@@ -26,45 +26,56 @@ Public Sub RunBetaEvidenceFromForm( _
     ByVal skipGrayFilledSourceCellEnabled As Boolean, _
     ByVal sourceSkipFillColorHexCodes As String, _
     ByVal rightBorderEnabled As Boolean, _
-    ByVal useRightBorderTargetCol As Boolean, _
-    ByVal rightBorderTargetCol As Long)
+    ByVal clearOldHeaderTextEnabled As Boolean, _
+    ByVal evidenceNewSideColCount As Long, _
+    ByVal matchOldSideColCountToNewSide As Boolean)
 
     Dim options As BetaEvidenceUiOptions
     BetaEvidenceGenerator.InitializeBetaEvidenceUiOptionsForForm options
 
-    options.SourceWorkbookPath = Trim$(sourceWorkbookPath)
-    options.InputFileName = Trim$(inputFileName)
+    options.sourceWorkbookPath = Trim$(sourceWorkbookPath)
+    options.inputFileName = Trim$(inputFileName)
 
-    options.UseSlotHeight = useSlotHeight
+    options.useSlotHeight = useSlotHeight
     If useSlotHeight And slotHeight > 0 Then
-        options.SlotHeight = slotHeight
+        options.slotHeight = slotHeight
     End If
 
-    options.UseOutputSheetFilter = useOutputSheetFilter
-    options.OutputSheetFilterText = Trim$(outputSheetFilterText)
+    options.useOutputSheetFilter = useOutputSheetFilter
+    options.outputSheetFilterText = Trim$(outputSheetFilterText)
 
     options.OverrideTopBorderEnabled = True
-    options.TopBorderEnabled = topBorderEnabled
+    options.topBorderEnabled = topBorderEnabled
 
     options.OverrideExcludeOutputSheetByPatternEnabled = True
-    options.ExcludeOutputSheetByPatternEnabled = excludeOutputSheetByPatternEnabled
+    options.excludeOutputSheetByPatternEnabled = excludeOutputSheetByPatternEnabled
     options.UseExcludedOutputSheetNamePatterns = True
-    options.ExcludedOutputSheetNamePatterns = Trim$(excludedOutputSheetNamePatterns)
+    options.excludedOutputSheetNamePatterns = Trim$(excludedOutputSheetNamePatterns)
 
     options.OverrideSkipGrayFilledSourceCellEnabled = True
-    options.SkipGrayFilledSourceCellEnabled = skipGrayFilledSourceCellEnabled
+    options.skipGrayFilledSourceCellEnabled = skipGrayFilledSourceCellEnabled
     options.UseSourceSkipFillColorHexCodes = True
-    options.SourceSkipFillColorHexCodes = Trim$(sourceSkipFillColorHexCodes)
+    options.sourceSkipFillColorHexCodes = Trim$(sourceSkipFillColorHexCodes)
 
     options.OverrideRightBorderEnabled = True
-    options.RightBorderEnabled = rightBorderEnabled
+    options.rightBorderEnabled = rightBorderEnabled
 
-    options.UseRightBorderTargetCol = useRightBorderTargetCol
-    If useRightBorderTargetCol And rightBorderTargetCol >= 1 And rightBorderTargetCol <= 16384 Then
-        options.RightBorderTargetCol = rightBorderTargetCol
+    options.OverrideClearOldHeaderTextEnabled = True
+    options.clearOldHeaderTextEnabled = clearOldHeaderTextEnabled
+
+    options.UseEvidenceNewSideColCount = True
+    If evidenceNewSideColCount > 0 Then
+        options.evidenceNewSideColCount = evidenceNewSideColCount
     End If
 
-    If Len(options.SourceWorkbookPath) = 0 Or Len(options.InputFileName) = 0 Then
+    options.UseEvidenceColumnLayoutScope = True
+    If matchOldSideColCountToNewSide Then
+        options.evidenceColumnLayoutScope = "Both"
+    Else
+        options.evidenceColumnLayoutScope = "NewOnly"
+    End If
+
+    If Len(options.sourceWorkbookPath) = 0 Or Len(options.inputFileName) = 0 Then
         MsgBox "参照元ファイルパスと入力ファイル名は必須です。", vbExclamation
         Exit Sub
     End If
@@ -80,11 +91,11 @@ Public Sub RunBetaTestCaseFromForm( _
     Dim options As BetaTestCaseUiOptions
     options = BetaTestCaseGenerator.CreateBetaTestCaseUiOptionsForForm()
 
-    options.FeatureId = Trim$(featureId)
-    options.UseOutputPath = useOutputPath
-    options.OutputPath = Trim$(outputPath)
+    options.featureId = Trim$(featureId)
+    options.useOutputPath = useOutputPath
+    options.outputPath = Trim$(outputPath)
 
-    If Len(options.FeatureId) = 0 Then
+    If Len(options.featureId) = 0 Then
         MsgBox "機能連番は必須です。", vbExclamation
         Exit Sub
     End If
@@ -95,17 +106,26 @@ End Sub
 Public Sub RunConditionalBranchCheckerFromForm( _
     ByVal featureName As String, _
     ByVal workbookPath As String, _
-    ByVal leadingFunctionStartsFromB1 As Boolean)
+    ByVal leadingFunctionStartsFromB1 As Boolean, _
+    ByVal markNonFunctionLineWithDash As Boolean, _
+    ByVal markFillEnabled As Boolean, _
+    ByVal markFillColorHex As String)
 
     Dim options As ConditionalBranchCheckerUiOptions
     options = ConditionalBranchChecker.CreateConditionalBranchCheckerUiOptionsForForm()
 
-    options.FeatureName = Trim$(featureName)
-    options.WorkbookPath = Trim$(workbookPath)
+    options.featureName = Trim$(featureName)
+    options.workbookPath = Trim$(workbookPath)
     options.OverrideLeadingFunctionStartsFromB1 = True
-    options.LeadingFunctionStartsFromB1 = leadingFunctionStartsFromB1
+    options.leadingFunctionStartsFromB1 = leadingFunctionStartsFromB1
+    options.OverrideMarkNonFunctionLineWithDash = True
+    options.markNonFunctionLineWithDash = markNonFunctionLineWithDash
+    options.OverrideMarkFillEnabled = True
+    options.markFillEnabled = markFillEnabled
+    options.UseMarkFillColorHex = True
+    options.markFillColorHex = Trim$(markFillColorHex)
 
-    If Len(options.FeatureName) = 0 Or Len(options.WorkbookPath) = 0 Then
+    If Len(options.featureName) = 0 Or Len(options.workbookPath) = 0 Then
         MsgBox "機能名と対象ブックパスは必須です。", vbExclamation
         Exit Sub
     End If
@@ -125,16 +145,16 @@ Public Sub RunEscapePartsMarkingFromForm( _
 
     options.TargetWorkbookPath = Trim$(workbookPath)
     options.UseCompletionMessage = True
-    options.CompletionMessage = Trim$(completionMessage)
+    options.completionMessage = Trim$(completionMessage)
 
     options.UseEscapeTargetPrefixesCsv = True
-    options.EscapeTargetPrefixesCsv = Trim$(escapeTargetPrefixesCsv)
+    options.escapeTargetPrefixesCsv = Trim$(escapeTargetPrefixesCsv)
 
     options.UseOnlyAValueRowFillTarget = True
-    options.OnlyAValueRowFillTarget = Trim$(onlyAValueRowFillTarget)
+    options.onlyAValueRowFillTarget = Trim$(onlyAValueRowFillTarget)
 
     options.UseOnlyAValueRowFillColorHex = True
-    options.OnlyAValueRowFillColorHex = Trim$(onlyAValueRowFillColorHex)
+    options.onlyAValueRowFillColorHex = Trim$(onlyAValueRowFillColorHex)
 
     If Len(options.TargetWorkbookPath) = 0 Then
         MsgBox "対象ブックパスは必須です。", vbExclamation

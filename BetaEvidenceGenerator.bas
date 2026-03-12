@@ -45,17 +45,30 @@ Private Const FIRST_DEST_ROW As Long = 3 ' slot0 の書き込み開始行
 Private Const SLOT_HEIGHT As Long = 50   ' 既定値: 50行刻み
 Private Const DEST_COL_A As Long = 1     ' 書き込み先 A列
 Private Const DEST_COL_B As Long = 2     ' 書き込み先 B列
-Private Const BORDER_END_COL As Long = 32 ' 上罫線の終端（AF列）
+Private Const EVIDENCE_NEW_SIDE_FIRST_COL As Long = 3 ' 新側の先頭列（C列）
+Private Const EVIDENCE_OLD_SIDE_COL_COUNT As Long = 15 ' 旧側の比較列数
+Private Const DEFAULT_BORDER_END_COL As Long = 32 ' 既定構成では AF列（A:B + 新15 + 旧15）
 Public Const OPTION_RIGHT_BORDER_ENABLED As Boolean = True ' True: 右罫線を適用 / False: 右罫線を適用しない
-Private Const RIGHT_BORDER_TARGET_COL As Long = 17 ' 右罫線を引く対象列（既定: Q列）
+Private Const DEFAULT_RIGHT_BORDER_TARGET_COL As Long = 17 ' 既定構成では Q列が新旧の境界
 Private Const RIGHT_BORDER_EXTRA_ROWS As Long = 50 ' 最終書き込み行から下方向へ延長する行数
+Private Const EVIDENCE_HEADER_ROW As Long = 2 ' 雛形ヘッダ行
+Private Const EVIDENCE_OLD_HEADER_COL As Long = 18 ' R2 = 旧
+Private Const EVIDENCE_COMPARE_BASE_COL_COUNT As Long = 15 ' 雛形既定の比較列数
+Private Const EVIDENCE_COMPARE_MIN_COL_COUNT As Long = 3 ' 新側を増減する際の最小列数
+Private Const EVIDENCE_NEW_SIDE_ADJUST_COL As Long = 4 ' 新側は D列をテンプレ/増減起点に使う
+Private Const EVIDENCE_COLUMN_LAYOUT_SCOPE_NEWONLY As String = "NewOnly"
+Private Const EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH As String = "Both"
+Public Const OPTION_CLEAR_OLD_HEADER_TEXT_ENABLED As Boolean = False ' True: A1複製シートの R2「旧」を消す / False: 残す
+Private Const OPTION_EVIDENCE_NEW_SIDE_COL_COUNT As Long = EVIDENCE_COMPARE_BASE_COL_COUNT ' 列数オプション。Both 指定時は旧側にも同じ列数を適用する
+Private Const OPTION_EVIDENCE_COLUMN_LAYOUT_SCOPE As String = EVIDENCE_COLUMN_LAYOUT_SCOPE_NEWONLY ' NewOnly: 新側だけ増減 / Both: 新旧両側を同数で増減
+Private Const EXCEL_MAX_COLUMN_COUNT As Long = 16384
 
 ' ===== 共通モード先頭シートのヘッダ置換 =====
 Private Const HEADER_PLACEHOLDER As String = "〇〇〇"
 
 ' ===== Office定数を数値で扱う（参照設定に依存しにくくするため） =====
 Private Const FILE_DIALOG_PICKER As Long = 3 ' msoFileDialogFilePicker
-Public Const OPTION_TOP_BORDER_ENABLED As Boolean = True ' True: A:AAに上罫線を適用 / False: 上罫線を適用しない
+Public Const OPTION_TOP_BORDER_ENABLED As Boolean = True ' True: A列から比較領域終端まで上罫線を適用 / False: 上罫線を適用しない
 Public Const OPTION_SLOT_HEIGHT_PROMPT_ENABLED As Boolean = True ' True: 行オフセット入力を表示 / False: SLOT_HEIGHTを使用
 Public Const OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED As Boolean = True ' True: 作成シート選択入力を表示 / False: 全シート出力
 ' 出力対象から除外したいシート名/パターンを Like 形式で指定
@@ -68,17 +81,17 @@ Public Const OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED As Boolean = True ' Tru
 Private Const SOURCE_SKIP_FILL_COLOR_HEX_CODES As String = "#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080" ' 比較対象カラーコード（#RRGGBB）
 Public Type BetaEvidenceUiOptions
     Enabled As Boolean
-    SourceWorkbookPath As String
-    InputFileName As String
+    sourceWorkbookPath As String
+    inputFileName As String
 
-    UseSlotHeight As Boolean
-    SlotHeight As Long
+    useSlotHeight As Boolean
+    slotHeight As Long
 
-    UseOutputSheetFilter As Boolean
-    OutputSheetFilterText As String
+    useOutputSheetFilter As Boolean
+    outputSheetFilterText As String
 
     OverrideTopBorderEnabled As Boolean
-    TopBorderEnabled As Boolean
+    topBorderEnabled As Boolean
 
     OverrideSlotHeightPromptEnabled As Boolean
     SlotHeightPromptEnabled As Boolean
@@ -87,22 +100,29 @@ Public Type BetaEvidenceUiOptions
     OutputSheetSelectionPromptEnabled As Boolean
 
     OverrideExcludeOutputSheetByPatternEnabled As Boolean
-    ExcludeOutputSheetByPatternEnabled As Boolean
+    excludeOutputSheetByPatternEnabled As Boolean
 
     UseExcludedOutputSheetNamePatterns As Boolean
-    ExcludedOutputSheetNamePatterns As String
+    excludedOutputSheetNamePatterns As String
 
     OverrideSkipGrayFilledSourceCellEnabled As Boolean
-    SkipGrayFilledSourceCellEnabled As Boolean
+    skipGrayFilledSourceCellEnabled As Boolean
 
     UseSourceSkipFillColorHexCodes As Boolean
-    SourceSkipFillColorHexCodes As String
+    sourceSkipFillColorHexCodes As String
 
     OverrideRightBorderEnabled As Boolean
-    RightBorderEnabled As Boolean
+    rightBorderEnabled As Boolean
 
-    UseRightBorderTargetCol As Boolean
-    RightBorderTargetCol As Long
+
+    OverrideClearOldHeaderTextEnabled As Boolean
+    clearOldHeaderTextEnabled As Boolean
+
+    UseEvidenceNewSideColCount As Boolean
+    evidenceNewSideColCount As Long
+
+    UseEvidenceColumnLayoutScope As Boolean
+    evidenceColumnLayoutScope As String
 End Type
 
 Private mUiOptions As BetaEvidenceUiOptions
@@ -128,17 +148,17 @@ End Function
 
 Public Sub InitializeBetaEvidenceUiOptionsForForm(ByRef options As BetaEvidenceUiOptions)
     options.Enabled = True
-    options.SourceWorkbookPath = vbNullString
-    options.InputFileName = vbNullString
+    options.sourceWorkbookPath = vbNullString
+    options.inputFileName = vbNullString
 
-    options.UseSlotHeight = True
-    options.SlotHeight = SLOT_HEIGHT
+    options.useSlotHeight = True
+    options.slotHeight = SLOT_HEIGHT
 
-    options.UseOutputSheetFilter = True
-    options.OutputSheetFilterText = vbNullString
+    options.useOutputSheetFilter = True
+    options.outputSheetFilterText = vbNullString
 
     options.OverrideTopBorderEnabled = True
-    options.TopBorderEnabled = OPTION_TOP_BORDER_ENABLED
+    options.topBorderEnabled = OPTION_TOP_BORDER_ENABLED
 
     options.OverrideSlotHeightPromptEnabled = True
     options.SlotHeightPromptEnabled = False
@@ -147,37 +167,44 @@ Public Sub InitializeBetaEvidenceUiOptionsForForm(ByRef options As BetaEvidenceU
     options.OutputSheetSelectionPromptEnabled = False
 
     options.OverrideExcludeOutputSheetByPatternEnabled = True
-    options.ExcludeOutputSheetByPatternEnabled = OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED
+    options.excludeOutputSheetByPatternEnabled = OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED
 
     options.UseExcludedOutputSheetNamePatterns = True
-    options.ExcludedOutputSheetNamePatterns = EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS
+    options.excludedOutputSheetNamePatterns = EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS
 
     options.OverrideSkipGrayFilledSourceCellEnabled = True
-    options.SkipGrayFilledSourceCellEnabled = OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED
+    options.skipGrayFilledSourceCellEnabled = OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED
 
     options.UseSourceSkipFillColorHexCodes = True
-    options.SourceSkipFillColorHexCodes = SOURCE_SKIP_FILL_COLOR_HEX_CODES
+    options.sourceSkipFillColorHexCodes = SOURCE_SKIP_FILL_COLOR_HEX_CODES
 
     options.OverrideRightBorderEnabled = True
-    options.RightBorderEnabled = OPTION_RIGHT_BORDER_ENABLED
+    options.rightBorderEnabled = OPTION_RIGHT_BORDER_ENABLED
 
-    options.UseRightBorderTargetCol = True
-    options.RightBorderTargetCol = RIGHT_BORDER_TARGET_COL
+
+    options.OverrideClearOldHeaderTextEnabled = True
+    options.clearOldHeaderTextEnabled = OPTION_CLEAR_OLD_HEADER_TEXT_ENABLED
+
+    options.UseEvidenceNewSideColCount = True
+    options.evidenceNewSideColCount = OPTION_EVIDENCE_NEW_SIDE_COL_COUNT
+
+    options.UseEvidenceColumnLayoutScope = True
+    options.evidenceColumnLayoutScope = OPTION_EVIDENCE_COLUMN_LAYOUT_SCOPE
 End Sub
 
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
-    mUiOptions.SourceWorkbookPath = vbNullString
-    mUiOptions.InputFileName = vbNullString
+    mUiOptions.sourceWorkbookPath = vbNullString
+    mUiOptions.inputFileName = vbNullString
 
-    mUiOptions.UseSlotHeight = False
-    mUiOptions.SlotHeight = 0
+    mUiOptions.useSlotHeight = False
+    mUiOptions.slotHeight = 0
 
-    mUiOptions.UseOutputSheetFilter = False
-    mUiOptions.OutputSheetFilterText = vbNullString
+    mUiOptions.useOutputSheetFilter = False
+    mUiOptions.outputSheetFilterText = vbNullString
 
     mUiOptions.OverrideTopBorderEnabled = False
-    mUiOptions.TopBorderEnabled = False
+    mUiOptions.topBorderEnabled = False
 
     mUiOptions.OverrideSlotHeightPromptEnabled = False
     mUiOptions.SlotHeightPromptEnabled = False
@@ -186,22 +213,29 @@ Private Sub ClearUiOptions()
     mUiOptions.OutputSheetSelectionPromptEnabled = False
 
     mUiOptions.OverrideExcludeOutputSheetByPatternEnabled = False
-    mUiOptions.ExcludeOutputSheetByPatternEnabled = False
+    mUiOptions.excludeOutputSheetByPatternEnabled = False
 
     mUiOptions.UseExcludedOutputSheetNamePatterns = False
-    mUiOptions.ExcludedOutputSheetNamePatterns = vbNullString
+    mUiOptions.excludedOutputSheetNamePatterns = vbNullString
 
     mUiOptions.OverrideSkipGrayFilledSourceCellEnabled = False
-    mUiOptions.SkipGrayFilledSourceCellEnabled = False
+    mUiOptions.skipGrayFilledSourceCellEnabled = False
 
     mUiOptions.UseSourceSkipFillColorHexCodes = False
-    mUiOptions.SourceSkipFillColorHexCodes = vbNullString
+    mUiOptions.sourceSkipFillColorHexCodes = vbNullString
 
     mUiOptions.OverrideRightBorderEnabled = False
-    mUiOptions.RightBorderEnabled = False
+    mUiOptions.rightBorderEnabled = False
 
-    mUiOptions.UseRightBorderTargetCol = False
-    mUiOptions.RightBorderTargetCol = 0
+
+    mUiOptions.OverrideClearOldHeaderTextEnabled = False
+    mUiOptions.clearOldHeaderTextEnabled = False
+
+    mUiOptions.UseEvidenceNewSideColCount = False
+    mUiOptions.evidenceNewSideColCount = 0
+
+    mUiOptions.UseEvidenceColumnLayoutScope = False
+    mUiOptions.evidenceColumnLayoutScope = vbNullString
 End Sub
 
 ' ============================================================
@@ -240,6 +274,7 @@ Public Sub RunMain()
     Dim seedSheetName As String
     Dim outputSheetFilter As Object
     Dim outputSheetFilterLabel As String
+    Dim outputSheetFilterRaw As String
     Dim commonCreatedSheetCount As Long
     Dim individualCreatedSheetCount As Long
     Dim commonHeaderCreated As Boolean
@@ -272,8 +307,8 @@ Public Sub RunMain()
     End If
 
     If mUiOptions.Enabled Then
-        If mUiOptions.UseSlotHeight And mUiOptions.SlotHeight > 0 Then
-            mSlotHeight = mUiOptions.SlotHeight
+        If mUiOptions.useSlotHeight And mUiOptions.slotHeight > 0 Then
+            mSlotHeight = mUiOptions.slotHeight
         Else
             mSlotHeight = SLOT_HEIGHT
         End If
@@ -284,18 +319,17 @@ Public Sub RunMain()
     End If
 
     If mUiOptions.Enabled Then
-        If mUiOptions.UseOutputSheetFilter Then
-            Set outputSheetFilter = ParseOutputSheetFilter(mUiOptions.OutputSheetFilterText)
+        If mUiOptions.useOutputSheetFilter Then
+            outputSheetFilterRaw = mUiOptions.outputSheetFilterText
         Else
-            Set outputSheetFilter = Nothing
+            outputSheetFilterRaw = vbNullString
         End If
     ElseIf IsOutputSheetSelectionPromptEnabled() Then
-        Set outputSheetFilter = PromptOutputSheetFilter()
+        outputSheetFilterRaw = PromptOutputSheetFilter()
     Else
-        Set outputSheetFilter = Nothing ' 入力ダイアログOFF時は全シートを出力対象にする
+        outputSheetFilterRaw = vbNullString ' 入力ダイアログOFF時は全シートを出力対象にする
     End If
 
-    outputSheetFilterLabel = BuildOutputSheetFilterLabel(outputSheetFilter)
     Set mSkipSourceFillColorMap = BuildSkipSourceFillColorMap()
 
     ' 後続処理で共通/個別シート名や置換に使うため、拡張子なし名を作成する
@@ -324,6 +358,9 @@ Public Sub RunMain()
     commonSourceSheetName = "【共通】" & referValue
     Set commonSourceWs = FindWorksheetExact(sourceWb, commonSourceSheetName)
     Set individualSourceWs = FindIndividualSourceSheet(sourceWb, referValue)
+
+    Set outputSheetFilter = ParseOutputSheetFilter(outputSheetFilterRaw, commonSourceWs, individualSourceWs)
+    outputSheetFilterLabel = BuildOutputSheetFilterLabel(outputSheetFilter)
 
     ' 速度改善のため、画面更新や再計算を一時的に止める
     prevScreenUpdating = Application.ScreenUpdating
@@ -488,7 +525,7 @@ Private Function SelectTargetWorkbookPath() As String
     Dim fd As Object
 
     If mUiOptions.Enabled Then
-        SelectTargetWorkbookPath = Trim$(mUiOptions.SourceWorkbookPath)
+        SelectTargetWorkbookPath = Trim$(mUiOptions.sourceWorkbookPath)
         Exit Function
     End If
 
@@ -531,7 +568,7 @@ Private Function PromptInputFileName() As String
     Dim s As String
 
     If mUiOptions.Enabled Then
-        PromptInputFileName = Trim$(mUiOptions.InputFileName)
+        PromptInputFileName = Trim$(mUiOptions.inputFileName)
         Exit Function
     End If
 
@@ -571,37 +608,47 @@ Private Function PromptSlotHeightOrDefault(ByVal defaultHeight As Long) As Long
     PromptSlotHeightOrDefault = CLng(numericValue)
 End Function
 
-Private Function PromptOutputSheetFilter() As Object
+Private Function PromptOutputSheetFilter() As String
     Dim inputText As String
 
     inputText = InputBox( _
         "出力するシート名をカンマ区切りで入力してください（任意）。" & vbCrLf & _
-        "例: A1,A2,B1" & vbCrLf & _
+        "範囲指定は : が使えます。" & vbCrLf & _
+        "例: A1:A3 / :A2 / A3:" & vbCrLf & _
+        "共通と個別をまたぐ指定（例: A1:B3）はできません。" & vbCrLf & _
         "空欄の場合は全シートを出力します。", _
         "出力シート名（任意）")
 
-    Set PromptOutputSheetFilter = ParseOutputSheetFilter(inputText)
+    PromptOutputSheetFilter = inputText
 End Function
 
-Private Function ParseOutputSheetFilter(ByVal rawInput As String) As Object
+Private Function ParseOutputSheetFilter( _
+    ByVal rawInput As String, _
+    Optional ByVal commonSourceWs As Worksheet = Nothing, _
+    Optional ByVal individualSourceWs As Worksheet = Nothing) As Object
+
     Dim normalizedText As String
     Dim names As Variant
-    Dim nameText As String
+    Dim tokenText As String
     Dim i As Long
     Dim dict As Object
+    Dim rangeMaxMap As Object
 
     normalizedText = Replace(rawInput, "，", ",")
+    normalizedText = Replace(normalizedText, "：", ":")
+    normalizedText = Trim$(normalizedText)
+    If Len(normalizedText) = 0 Then Exit Function
+
     names = Split(normalizedText, ",")
 
     Set dict = CreateObject("Scripting.Dictionary")
     dict.CompareMode = vbBinaryCompare
+    Set rangeMaxMap = BuildOutputSheetRangeMaxMap(commonSourceWs, individualSourceWs)
 
     For i = LBound(names) To UBound(names)
-        nameText = Trim$(CStr(names(i)))
-        If Len(nameText) > 0 Then
-            If Not dict.Exists(nameText) Then
-                dict.Add nameText, True
-            End If
+        tokenText = Trim$(CStr(names(i)))
+        If Len(tokenText) > 0 Then
+            ExpandOutputSheetFilterToken dict, tokenText, rangeMaxMap
         End If
     Next i
 
@@ -610,6 +657,240 @@ Private Function ParseOutputSheetFilter(ByVal rawInput As String) As Object
     Else
         Set ParseOutputSheetFilter = dict
     End If
+End Function
+
+Private Function BuildOutputSheetRangeMaxMap( _
+    Optional ByVal commonSourceWs As Worksheet = Nothing, _
+    Optional ByVal individualSourceWs As Worksheet = Nothing) As Object
+
+    Dim dict As Object
+
+    Set dict = CreateObject("Scripting.Dictionary")
+    dict.CompareMode = vbBinaryCompare
+
+    RegisterOutputSheetRangeMaxFromSource commonSourceWs, dict
+    RegisterOutputSheetRangeMaxFromSource individualSourceWs, dict
+
+    Set BuildOutputSheetRangeMaxMap = dict
+End Function
+
+Private Sub RegisterOutputSheetRangeMaxFromSource( _
+    ByVal sourceWs As Worksheet, _
+    ByVal rangeMaxMap As Object)
+
+    Dim lastRowA As Long
+    Dim scanEndRow As Long
+    Dim sourceValuesA As Variant
+    Dim rowOffset As Long
+    Dim rawA As Variant
+    Dim sheetName As String
+    Dim prefixText As String
+    Dim numericIndex As Long
+
+    If sourceWs Is Nothing Then Exit Sub
+
+    lastRowA = GetLastUsedRowInColumn(sourceWs, SOURCE_COL_A)
+    scanEndRow = lastRowA + EMPTY_STREAK_STOP_COUNT
+    sourceValuesA = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_A, SOURCE_START_ROW, scanEndRow)
+
+    For rowOffset = 1 To UBound(sourceValuesA, 1)
+        rawA = sourceValuesA(rowOffset, 1)
+        If HasValueForSourceCell(rawA) Then
+            sheetName = Trim$(CStr(rawA))
+            If TryParseSimpleSheetSeriesToken(sheetName, prefixText, numericIndex) Then
+                RegisterOutputSheetRangeMax rangeMaxMap, prefixText, numericIndex
+            End If
+        End If
+    Next rowOffset
+End Sub
+
+Private Sub RegisterOutputSheetRangeMax( _
+    ByVal rangeMaxMap As Object, _
+    ByVal prefixText As String, _
+    ByVal numericIndex As Long)
+
+    If rangeMaxMap Is Nothing Then Exit Sub
+    If Len(prefixText) = 0 Then Exit Sub
+    If numericIndex < 1 Then Exit Sub
+
+    If Not rangeMaxMap.Exists(prefixText) Then
+        rangeMaxMap.Add prefixText, numericIndex
+    ElseIf CLng(rangeMaxMap(prefixText)) < numericIndex Then
+        rangeMaxMap(prefixText) = numericIndex
+    End If
+End Sub
+
+Private Sub ExpandOutputSheetFilterToken( _
+    ByVal outputSheetFilter As Object, _
+    ByVal tokenText As String, _
+    ByVal rangeMaxMap As Object)
+
+    If outputSheetFilter Is Nothing Then Exit Sub
+
+    If InStr(1, tokenText, ":", vbBinaryCompare) > 0 Then
+        ExpandOutputSheetFilterRange outputSheetFilter, tokenText, rangeMaxMap
+    Else
+        AddOutputSheetFilterName outputSheetFilter, tokenText
+    End If
+End Sub
+
+Private Sub ExpandOutputSheetFilterRange( _
+    ByVal outputSheetFilter As Object, _
+    ByVal tokenText As String, _
+    ByVal rangeMaxMap As Object)
+
+    Dim colonPos As Long
+    Dim startToken As String
+    Dim endToken As String
+    Dim startPrefix As String
+    Dim endPrefix As String
+    Dim prefixText As String
+    Dim startIndex As Long
+    Dim endIndex As Long
+    Dim currentIndex As Long
+
+    colonPos = InStr(1, tokenText, ":", vbBinaryCompare)
+    If colonPos <= 0 Then
+        AddOutputSheetFilterName outputSheetFilter, tokenText
+        Exit Sub
+    End If
+
+    If InStr(colonPos + 1, tokenText, ":", vbBinaryCompare) > 0 Then
+        Err.Raise vbObjectError + 2411, "ParseOutputSheetFilter", _
+                  "出力シート範囲指定に ':' を複数含めることはできません: " & tokenText
+    End If
+
+    startToken = Trim$(Left$(tokenText, colonPos - 1))
+    endToken = Trim$(Mid$(tokenText, colonPos + 1))
+
+    If Len(startToken) = 0 And Len(endToken) = 0 Then
+        Err.Raise vbObjectError + 2412, "ParseOutputSheetFilter", _
+                  "出力シート範囲指定が空です: " & tokenText
+    End If
+
+    If Len(startToken) > 0 Then
+        If Not TryParseSimpleSheetSeriesToken(startToken, startPrefix, startIndex) Then
+            Err.Raise vbObjectError + 2413, "ParseOutputSheetFilter", _
+                      "範囲指定の開始値が不正です。A1 のような形式で指定してください: " & tokenText
+        End If
+        prefixText = startPrefix
+    End If
+
+    If Len(endToken) > 0 Then
+        If Not TryParseSimpleSheetSeriesToken(endToken, endPrefix, endIndex) Then
+            Err.Raise vbObjectError + 2414, "ParseOutputSheetFilter", _
+                      "範囲指定の終了値が不正です。A3 のような形式で指定してください: " & tokenText
+        End If
+        If Len(prefixText) = 0 Then
+            prefixText = endPrefix
+        End If
+    End If
+
+    If Len(startToken) > 0 And Len(endToken) > 0 Then
+        If StrComp(startPrefix, endPrefix, vbBinaryCompare) <> 0 Then
+            Err.Raise vbObjectError + 2415, "ParseOutputSheetFilter", _
+                      "共通と個別をまたぐ範囲指定はできません。開始と終了は同じ接頭辞で指定してください: " & tokenText
+        End If
+    End If
+
+    If Len(startToken) = 0 Then
+        startIndex = 1
+    End If
+
+    If Len(endToken) = 0 Then
+        endIndex = ResolveOutputSheetRangeLastIndex(prefixText, rangeMaxMap, tokenText)
+    End If
+
+    If endIndex < startIndex Then
+        Err.Raise vbObjectError + 2416, "ParseOutputSheetFilter", _
+                  "出力シート範囲の開始値が終了値を超えています: " & tokenText
+    End If
+
+    For currentIndex = startIndex To endIndex
+        AddOutputSheetFilterName outputSheetFilter, prefixText & CStr(currentIndex)
+    Next currentIndex
+End Sub
+
+Private Function ResolveOutputSheetRangeLastIndex( _
+    ByVal prefixText As String, _
+    ByVal rangeMaxMap As Object, _
+    ByVal tokenText As String) As Long
+
+    If rangeMaxMap Is Nothing Then
+        Err.Raise vbObjectError + 2417, "ParseOutputSheetFilter", _
+                  "終端省略の範囲指定の末尾を判断できませんでした: " & tokenText
+    End If
+
+    If Not rangeMaxMap.Exists(prefixText) Then
+        Err.Raise vbObjectError + 2418, "ParseOutputSheetFilter", _
+                  "終端省略の範囲指定に対応するシートが参照元に見つかりませんでした: " & tokenText
+    End If
+
+    ResolveOutputSheetRangeLastIndex = CLng(rangeMaxMap(prefixText))
+End Function
+
+Private Sub AddOutputSheetFilterName( _
+    ByVal outputSheetFilter As Object, _
+    ByVal sheetName As String)
+
+    Dim normalizedName As String
+
+    If outputSheetFilter Is Nothing Then Exit Sub
+
+    normalizedName = Trim$(sheetName)
+    If Len(normalizedName) = 0 Then Exit Sub
+
+    If Not outputSheetFilter.Exists(normalizedName) Then
+        outputSheetFilter.Add normalizedName, True
+    End If
+End Sub
+
+Private Function TryParseSimpleSheetSeriesToken( _
+    ByVal tokenText As String, _
+    ByRef prefixTextOut As String, _
+    ByRef numericIndexOut As Long) As Boolean
+
+    Dim normalized As String
+    Dim i As Long
+    Dim ch As String
+    Dim numberText As String
+
+    normalized = Trim$(tokenText)
+    prefixTextOut = vbNullString
+    numericIndexOut = 0
+
+    If Len(normalized) = 0 Then Exit Function
+
+    For i = 1 To Len(normalized)
+        ch = Mid$(normalized, i, 1)
+        If ch >= "0" And ch <= "9" Then Exit For
+        If (ch < "A" Or ch > "Z") And (ch < "a" Or ch > "z") Then Exit Function
+    Next i
+
+    If i <= 1 Or i > Len(normalized) Then Exit Function
+
+    prefixTextOut = UCase$(Left$(normalized, i - 1))
+    numberText = Mid$(normalized, i)
+    If Len(numberText) = 0 Then Exit Function
+
+    For i = 1 To Len(numberText)
+        ch = Mid$(numberText, i, 1)
+        If ch < "0" Or ch > "9" Then
+            prefixTextOut = vbNullString
+            Exit Function
+        End If
+    Next i
+
+    On Error GoTo ParseError
+    numericIndexOut = CLng(numberText)
+    If numericIndexOut < 1 Then GoTo ParseError
+
+    TryParseSimpleSheetSeriesToken = True
+    Exit Function
+
+ParseError:
+    prefixTextOut = vbNullString
+    numericIndexOut = 0
 End Function
 
 Private Function BuildOutputSheetFilterLabel(ByVal outputSheetFilter As Object) As String
@@ -637,7 +918,7 @@ End Function
 
 Private Function IsTopBorderEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideTopBorderEnabled Then
-        IsTopBorderEnabled = mUiOptions.TopBorderEnabled
+        IsTopBorderEnabled = mUiOptions.topBorderEnabled
     Else
         IsTopBorderEnabled = OPTION_TOP_BORDER_ENABLED
     End If
@@ -661,7 +942,7 @@ End Function
 
 Private Function IsExcludeOutputSheetByPatternEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideExcludeOutputSheetByPatternEnabled Then
-        IsExcludeOutputSheetByPatternEnabled = mUiOptions.ExcludeOutputSheetByPatternEnabled
+        IsExcludeOutputSheetByPatternEnabled = mUiOptions.excludeOutputSheetByPatternEnabled
     Else
         IsExcludeOutputSheetByPatternEnabled = OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED
     End If
@@ -669,7 +950,7 @@ End Function
 
 Private Function GetExcludedOutputSheetNamePatterns() As String
     If mUiOptions.Enabled And mUiOptions.UseExcludedOutputSheetNamePatterns Then
-        GetExcludedOutputSheetNamePatterns = CStr(mUiOptions.ExcludedOutputSheetNamePatterns)
+        GetExcludedOutputSheetNamePatterns = CStr(mUiOptions.excludedOutputSheetNamePatterns)
     Else
         GetExcludedOutputSheetNamePatterns = EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS
     End If
@@ -677,7 +958,7 @@ End Function
 
 Private Function IsSkipGrayFilledSourceCellEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideSkipGrayFilledSourceCellEnabled Then
-        IsSkipGrayFilledSourceCellEnabled = mUiOptions.SkipGrayFilledSourceCellEnabled
+        IsSkipGrayFilledSourceCellEnabled = mUiOptions.skipGrayFilledSourceCellEnabled
     Else
         IsSkipGrayFilledSourceCellEnabled = OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED
     End If
@@ -685,7 +966,7 @@ End Function
 
 Private Function GetSourceSkipFillColorHexCodes() As String
     If mUiOptions.Enabled And mUiOptions.UseSourceSkipFillColorHexCodes Then
-        GetSourceSkipFillColorHexCodes = CStr(mUiOptions.SourceSkipFillColorHexCodes)
+        GetSourceSkipFillColorHexCodes = CStr(mUiOptions.sourceSkipFillColorHexCodes)
     Else
         GetSourceSkipFillColorHexCodes = SOURCE_SKIP_FILL_COLOR_HEX_CODES
     End If
@@ -693,17 +974,100 @@ End Function
 
 Private Function IsRightBorderEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideRightBorderEnabled Then
-        IsRightBorderEnabled = mUiOptions.RightBorderEnabled
+        IsRightBorderEnabled = mUiOptions.rightBorderEnabled
     Else
         IsRightBorderEnabled = OPTION_RIGHT_BORDER_ENABLED
     End If
 End Function
 
-Private Function GetRightBorderTargetCol() As Long
-    If mUiOptions.Enabled And mUiOptions.UseRightBorderTargetCol Then
-        GetRightBorderTargetCol = mUiOptions.RightBorderTargetCol
+Private Function IsClearOldHeaderTextEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideClearOldHeaderTextEnabled Then
+        IsClearOldHeaderTextEnabled = mUiOptions.clearOldHeaderTextEnabled
     Else
-        GetRightBorderTargetCol = RIGHT_BORDER_TARGET_COL
+        IsClearOldHeaderTextEnabled = OPTION_CLEAR_OLD_HEADER_TEXT_ENABLED
+    End If
+End Function
+
+Private Function GetEvidenceNewSideColCount() As Long
+    Dim desiredCount As Long
+    Dim maxCount As Long
+
+    If mUiOptions.Enabled And mUiOptions.UseEvidenceNewSideColCount Then
+        desiredCount = mUiOptions.evidenceNewSideColCount
+    Else
+        desiredCount = OPTION_EVIDENCE_NEW_SIDE_COL_COUNT
+    End If
+
+    If desiredCount < EVIDENCE_COMPARE_MIN_COL_COUNT Then
+        desiredCount = EVIDENCE_COMPARE_MIN_COL_COUNT
+    End If
+
+    maxCount = GetEvidenceMaxNewSideColCount()
+    If desiredCount > maxCount Then
+        desiredCount = maxCount
+    End If
+
+    GetEvidenceNewSideColCount = desiredCount
+End Function
+
+Private Function GetEvidenceMaxNewSideColCount() As Long
+    If StrComp(GetEvidenceColumnLayoutScope(), EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH, vbTextCompare) = 0 Then
+        GetEvidenceMaxNewSideColCount = (EXCEL_MAX_COLUMN_COUNT - DEST_COL_B) \ 2
+    Else
+        GetEvidenceMaxNewSideColCount = EXCEL_MAX_COLUMN_COUNT - DEST_COL_B - EVIDENCE_OLD_SIDE_COL_COUNT
+    End If
+
+    If GetEvidenceMaxNewSideColCount < EVIDENCE_COMPARE_MIN_COL_COUNT Then
+        GetEvidenceMaxNewSideColCount = EVIDENCE_COMPARE_MIN_COL_COUNT
+    End If
+End Function
+
+Private Function GetEvidenceColumnLayoutScope() As String
+    Dim normalizedScope As String
+
+    If mUiOptions.Enabled And mUiOptions.UseEvidenceColumnLayoutScope Then
+        normalizedScope = Trim$(CStr(mUiOptions.evidenceColumnLayoutScope))
+    Else
+        normalizedScope = OPTION_EVIDENCE_COLUMN_LAYOUT_SCOPE
+    End If
+
+    Select Case UCase$(normalizedScope)
+        Case UCase$(EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH)
+            GetEvidenceColumnLayoutScope = EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH
+        Case Else
+            GetEvidenceColumnLayoutScope = EVIDENCE_COLUMN_LAYOUT_SCOPE_NEWONLY
+    End Select
+End Function
+
+Private Function GetEvidenceOldSideColCount() As Long
+    If StrComp(GetEvidenceColumnLayoutScope(), EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH, vbTextCompare) = 0 Then
+        GetEvidenceOldSideColCount = GetEvidenceNewSideColCount()
+    Else
+        GetEvidenceOldSideColCount = EVIDENCE_OLD_SIDE_COL_COUNT
+    End If
+End Function
+
+Private Function GetEvidenceOldSideFirstCol() As Long
+    GetEvidenceOldSideFirstCol = GetRightBorderTargetCol() + 1
+End Function
+
+Private Function GetEvidenceOldSideAdjustCol() As Long
+    GetEvidenceOldSideAdjustCol = GetEvidenceOldSideFirstCol() + 1
+End Function
+
+Private Function GetRightBorderTargetCol() As Long
+    GetRightBorderTargetCol = ResolveEvidenceNewSideRightEdgeCol()
+End Function
+
+Private Function GetTopBorderEndCol() As Long
+    GetTopBorderEndCol = GetRightBorderTargetCol() + GetEvidenceOldSideColCount()
+End Function
+
+Private Function ResolveEvidenceNewSideRightEdgeCol() As Long
+    ResolveEvidenceNewSideRightEdgeCol = EVIDENCE_NEW_SIDE_FIRST_COL + GetEvidenceNewSideColCount() - 1
+
+    If ResolveEvidenceNewSideRightEdgeCol < EVIDENCE_NEW_SIDE_FIRST_COL Then
+        ResolveEvidenceNewSideRightEdgeCol = DEFAULT_RIGHT_BORDER_TARGET_COL
     End If
 End Function
 
@@ -1047,7 +1411,7 @@ Private Function GetReferValueFromReferSheet( _
     End If
 
     valueColIndex = ColumnLetterToIndex(REFER_VALUE_COL_LETTER, "REFER値列")
-    referValueRaw = referWs.Cells(matchedRow, valueColIndex).Value
+    referValueRaw = referWs.Cells(matchedRow, valueColIndex).value
 
     If IsError(referValueRaw) Then
         Err.Raise vbObjectError + 2103, "GetReferValueFromReferSheet", _
@@ -1103,7 +1467,7 @@ Private Sub BuildEvidenceWorkbookNamesFromRefer( _
     gammaColIndex = ColumnLetterToIndex(REFER_VALUE_COL_LETTER, "γ列")
 
     alphaText = RemoveExtension(GetTrimmedCellStringOrRaise( _
-        referWs.Cells(matchedRow, alphaColIndex).Value, _
+        referWs.Cells(matchedRow, alphaColIndex).value, _
         "BuildEvidenceWorkbookNamesFromRefer", _
         "REFERシートの" & REFER_ALPHA_COL_LETTER & "列（α）"))
     If Len(alphaText) = 0 Then
@@ -1111,7 +1475,7 @@ Private Sub BuildEvidenceWorkbookNamesFromRefer( _
                   "REFERシートの" & REFER_ALPHA_COL_LETTER & "列（α）から拡張子なし文字列を取得できませんでした。"
     End If
 
-    betaRaw = referWs.Cells(matchedRow, betaColIndex).Value
+    betaRaw = referWs.Cells(matchedRow, betaColIndex).value
     If IsError(betaRaw) Then
         Err.Raise vbObjectError + 2134, "BuildEvidenceWorkbookNamesFromRefer", _
                   "REFERシートの" & REFER_BETA_COL_LETTER & "列（β）にエラー値が入っています。"
@@ -1119,7 +1483,7 @@ Private Sub BuildEvidenceWorkbookNamesFromRefer( _
     betaText = ToTwoDigitStringStrict(betaRaw, "REFERシートの" & REFER_BETA_COL_LETTER & "列（β）")
 
     gammaText = GetTrimmedCellStringOrRaise( _
-        referWs.Cells(matchedRow, gammaColIndex).Value, _
+        referWs.Cells(matchedRow, gammaColIndex).value, _
         "BuildEvidenceWorkbookNamesFromRefer", _
         "REFERシートの" & REFER_VALUE_COL_LETTER & "列（γ）")
 
@@ -1161,7 +1525,7 @@ Private Function FindRowByExactMatch( _
     If lastRow < 1 Then Exit Function
 
     For r = 1 To lastRow
-        cellValue = ws.Cells(r, targetColIndex).Value
+        cellValue = ws.Cells(r, targetColIndex).value
 
         If IsError(cellValue) Then
             Err.Raise vbObjectError + 2111, "FindRowByExactMatch", _
@@ -1453,6 +1817,8 @@ Private Function ProcessReferenceSheet( _
                 createdSheetCount = createdSheetCount + 1
                 currentEvidenceSheetName = aSheetName
 
+                ApplyRightBorderToConfiguredColumn currentEvidenceWs, FIRST_DEST_ROW
+
                 ' シートが変わったら、スロットと pendingB を新しいシート用に初期化する
                 slotIndex = 0
                 hasPendingB = False
@@ -1552,6 +1918,10 @@ Private Function RecreateEvidenceSheetFromTemplate( _
     On Error GoTo RenameError
     RecreateEvidenceSheetFromTemplate.Name = newSheetName
     On Error GoTo 0
+
+    If StrComp(templateSourceWs.Name, TEMPLATE_BODY_SHEET_NAME, vbBinaryCompare) = 0 Then
+        ConfigureEvidenceBodySheetLayout RecreateEvidenceSheetFromTemplate
+    End If
     Exit Function
 
 RenameError:
@@ -1602,13 +1972,137 @@ Private Sub ReplaceHeaderPlaceholderInSheet( _
     Set cellA3 = evidenceWs.Range("A3")
     Set cellB3 = evidenceWs.Range("B3")
 
-    If Not IsError(cellA3.Value) Then
-        cellA3.Value = Replace(CStr(cellA3.Value), HEADER_PLACEHOLDER, baseName, 1, -1, vbTextCompare)
+    If Not IsError(cellA3.value) Then
+        cellA3.value = Replace(CStr(cellA3.value), HEADER_PLACEHOLDER, baseName, 1, -1, vbTextCompare)
     End If
 
-    If Not IsError(cellB3.Value) Then
-        cellB3.Value = Replace(CStr(cellB3.Value), HEADER_PLACEHOLDER, baseName, 1, -1, vbTextCompare)
+    If Not IsError(cellB3.value) Then
+        cellB3.value = Replace(CStr(cellB3.value), HEADER_PLACEHOLDER, baseName, 1, -1, vbTextCompare)
     End If
+End Sub
+
+Private Sub ConfigureEvidenceBodySheetLayout(ByVal evidenceWs As Worksheet)
+    If evidenceWs Is Nothing Then Exit Sub
+
+    If IsClearOldHeaderTextEnabled() Then
+        evidenceWs.Cells(EVIDENCE_HEADER_ROW, EVIDENCE_OLD_HEADER_COL).value = vbNullString
+    End If
+
+    AdjustEvidenceBodyColumnLayout evidenceWs
+End Sub
+
+Private Sub AdjustEvidenceBodyColumnLayout(ByVal evidenceWs As Worksheet)
+    Dim desiredNewSideColCount As Long
+    Dim layoutScope As String
+
+    desiredNewSideColCount = GetEvidenceNewSideColCount()
+    layoutScope = GetEvidenceColumnLayoutScope()
+
+    ResizeEvidenceNewSideColumns evidenceWs, desiredNewSideColCount
+
+    If StrComp(layoutScope, EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH, vbTextCompare) = 0 Then
+        ResizeEvidenceOldSideColumns evidenceWs, desiredNewSideColCount
+    End If
+End Sub
+
+Private Sub ResizeEvidenceNewSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredNewSideColCount As Long)
+
+    If desiredNewSideColCount < EVIDENCE_COMPARE_BASE_COL_COUNT Then
+        ShrinkEvidenceNewSideColumns evidenceWs, desiredNewSideColCount
+    ElseIf desiredNewSideColCount > EVIDENCE_COMPARE_BASE_COL_COUNT Then
+        ExpandEvidenceNewSideColumns evidenceWs, desiredNewSideColCount
+    End If
+End Sub
+
+Private Sub ShrinkEvidenceNewSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredNewSideColCount As Long)
+
+    Dim deleteCount As Long
+    Dim i As Long
+
+    If evidenceWs Is Nothing Then Exit Sub
+
+    deleteCount = EVIDENCE_COMPARE_BASE_COL_COUNT - desiredNewSideColCount
+    If deleteCount <= 0 Then Exit Sub
+
+    For i = 1 To deleteCount
+        evidenceWs.Columns(EVIDENCE_NEW_SIDE_ADJUST_COL).Delete
+    Next i
+End Sub
+
+Private Sub ExpandEvidenceNewSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredNewSideColCount As Long)
+
+    Dim insertCount As Long
+    Dim i As Long
+
+    If evidenceWs Is Nothing Then Exit Sub
+
+    insertCount = desiredNewSideColCount - EVIDENCE_COMPARE_BASE_COL_COUNT
+    If insertCount <= 0 Then Exit Sub
+
+    For i = 1 To insertCount
+        evidenceWs.Columns(EVIDENCE_NEW_SIDE_ADJUST_COL).Copy
+        evidenceWs.Columns(EVIDENCE_NEW_SIDE_ADJUST_COL).Insert Shift:=xlToRight
+    Next i
+
+    Application.CutCopyMode = False
+End Sub
+
+Private Sub ResizeEvidenceOldSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredOldSideColCount As Long)
+
+    If desiredOldSideColCount < EVIDENCE_OLD_SIDE_COL_COUNT Then
+        ShrinkEvidenceOldSideColumns evidenceWs, desiredOldSideColCount
+    ElseIf desiredOldSideColCount > EVIDENCE_OLD_SIDE_COL_COUNT Then
+        ExpandEvidenceOldSideColumns evidenceWs, desiredOldSideColCount
+    End If
+End Sub
+
+Private Sub ShrinkEvidenceOldSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredOldSideColCount As Long)
+
+    Dim deleteCount As Long
+    Dim i As Long
+    Dim adjustCol As Long
+
+    If evidenceWs Is Nothing Then Exit Sub
+
+    deleteCount = EVIDENCE_OLD_SIDE_COL_COUNT - desiredOldSideColCount
+    If deleteCount <= 0 Then Exit Sub
+
+    adjustCol = GetEvidenceOldSideAdjustCol()
+    For i = 1 To deleteCount
+        evidenceWs.Columns(adjustCol).Delete
+    Next i
+End Sub
+
+Private Sub ExpandEvidenceOldSideColumns( _
+    ByVal evidenceWs As Worksheet, _
+    ByVal desiredOldSideColCount As Long)
+
+    Dim insertCount As Long
+    Dim i As Long
+    Dim adjustCol As Long
+
+    If evidenceWs Is Nothing Then Exit Sub
+
+    insertCount = desiredOldSideColCount - EVIDENCE_OLD_SIDE_COL_COUNT
+    If insertCount <= 0 Then Exit Sub
+
+    adjustCol = GetEvidenceOldSideAdjustCol()
+    For i = 1 To insertCount
+        evidenceWs.Columns(adjustCol).Copy
+        evidenceWs.Columns(adjustCol).Insert Shift:=xlToRight
+    Next i
+
+    Application.CutCopyMode = False
 End Sub
 
 ' ============================================================
@@ -1665,7 +2159,7 @@ Private Function ReadColumnValuesFromRow( _
         endRow = startRow
     End If
 
-    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).Value
+    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).value
 
     If startRow = endRow Then
         singleCell(1, 1) = rawValues
@@ -1744,8 +2238,8 @@ Private Sub WritePairSlot( _
 
     destRow = GetDestRowForSlot(slotIndex)
 
-    destWs.Cells(destRow, DEST_COL_A).Value = pendingB
-    destWs.Cells(destRow, DEST_COL_B).Value = cValue
+    destWs.Cells(destRow, DEST_COL_A).value = pendingB
+    destWs.Cells(destRow, DEST_COL_B).value = cValue
     ApplyTopBorderToConfirmedRow destWs, destRow
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
@@ -1759,7 +2253,7 @@ Private Sub WriteCOnlySlot( _
     Dim destRow As Long
 
     destRow = GetDestRowForSlot(slotIndex)
-    destWs.Cells(destRow, DEST_COL_B).Value = cValue
+    destWs.Cells(destRow, DEST_COL_B).value = cValue
     ApplyTopBorderToConfirmedRow destWs, destRow
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
@@ -1773,7 +2267,7 @@ Private Sub WriteBOnlySlot( _
     Dim destRow As Long
 
     destRow = GetDestRowForSlot(slotIndex)
-    destWs.Cells(destRow, DEST_COL_A).Value = bValue
+    destWs.Cells(destRow, DEST_COL_A).value = bValue
     ApplyTopBorderToConfirmedRow destWs, destRow
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
@@ -1786,24 +2280,64 @@ Private Sub ApplyRightBorderToConfiguredColumn( _
     Dim targetCol As Long
     Dim borderRange As Range
 
-    If Not IsRightBorderEnabled() Then Exit Sub
-    If lastWrittenRow < FIRST_DEST_ROW Then Exit Sub
+    If destWs Is Nothing Then Exit Sub
 
     targetCol = GetRightBorderTargetCol()
-    If targetCol < 1 Or targetCol > 16384 Then
-        targetCol = 26
-    End If
+    endRow = ResolveRightBorderEndRow(destWs, lastWrittenRow)
 
-    endRow = lastWrittenRow + RIGHT_BORDER_EXTRA_ROWS
     Set borderRange = destWs.Range( _
         destWs.Cells(FIRST_DEST_ROW, targetCol), _
         destWs.Cells(endRow, targetCol))
 
     With borderRange.Borders(xlEdgeRight)
-        .LineStyle = xlContinuous
-        .Weight = xlThin
+        If IsRightBorderEnabled() Then
+            .LineStyle = xlContinuous
+            .Weight = xlThin
+        Else
+            .LineStyle = xlNone
+        End If
     End With
 End Sub
+
+Private Function ResolveRightBorderEndRow( _
+    ByVal destWs As Worksheet, _
+    ByVal lastWrittenRow As Long) As Long
+
+    Dim endRow As Long
+    Dim usedLastRow As Long
+
+    endRow = lastWrittenRow
+    If endRow < FIRST_DEST_ROW Then
+        endRow = FIRST_DEST_ROW
+    End If
+
+    endRow = endRow + RIGHT_BORDER_EXTRA_ROWS
+    usedLastRow = GetWorksheetUsedLastRow(destWs)
+    If usedLastRow > endRow Then
+        endRow = usedLastRow
+    End If
+
+    ResolveRightBorderEndRow = endRow
+End Function
+
+Private Function GetWorksheetUsedLastRow(ByVal ws As Worksheet) As Long
+    Dim usedLastRow As Long
+
+    If ws Is Nothing Then
+        GetWorksheetUsedLastRow = FIRST_DEST_ROW
+        Exit Function
+    End If
+
+    On Error Resume Next
+    usedLastRow = ws.UsedRange.Row + ws.UsedRange.Rows.Count - 1
+    On Error GoTo 0
+
+    If usedLastRow < FIRST_DEST_ROW Then
+        usedLastRow = FIRST_DEST_ROW
+    End If
+
+    GetWorksheetUsedLastRow = usedLastRow
+End Function
 
 Private Sub ApplyTopBorderToConfirmedRow( _
     ByVal destWs As Worksheet, _
@@ -1818,8 +2352,8 @@ Private Sub ApplyTopBorderToConfirmedRow( _
     If targetRow = FIRST_DEST_ROW Then Exit Sub
     If Not IsTopBorderEnabled() Then Exit Sub ' OFF時は上罫線処理をスキップ
 
-    aValue = destWs.Cells(targetRow, DEST_COL_A).Value
-    bValue = destWs.Cells(targetRow, DEST_COL_B).Value
+    aValue = destWs.Cells(targetRow, DEST_COL_A).value
+    bValue = destWs.Cells(targetRow, DEST_COL_B).value
 
     If IsError(aValue) Then Exit Sub
     If IsError(bValue) Then Exit Sub
@@ -1831,7 +2365,7 @@ Private Sub ApplyTopBorderToConfirmedRow( _
 
     Set borderRange = destWs.Range( _
         destWs.Cells(targetRow, DEST_COL_A), _
-        destWs.Cells(targetRow, BORDER_END_COL))
+        destWs.Cells(targetRow, GetTopBorderEndCol()))
 
     With borderRange.Borders(xlEdgeTop)
         .LineStyle = xlContinuous
