@@ -46,6 +46,42 @@ Private Const MATCH_IDX_ROW As Long = 4
 
 ' ===== SaveAs ダイアログ =====
 Private Const SAVE_AS_FILTER As String = "Excel ブック (*.xlsx),*.xlsx"
+Public Type BetaTestCaseUiOptions
+    Enabled As Boolean
+    featureId As String
+    useOutputPath As Boolean
+    outputPath As String
+End Type
+
+Private mUiOptions As BetaTestCaseUiOptions
+
+Public Sub RunMainWithUiOptions(ByRef options As BetaTestCaseUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
+    Dim defaults As BetaTestCaseUiOptions
+
+    defaults.Enabled = True
+    defaults.featureId = vbNullString
+    defaults.useOutputPath = False
+    defaults.outputPath = vbNullString
+
+    CreateBetaTestCaseUiOptionsForForm = defaults
+End Function
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.featureId = vbNullString
+    mUiOptions.useOutputPath = False
+    mUiOptions.outputPath = vbNullString
+End Sub
 
 ' ============================================================
 ' 実行入口
@@ -80,6 +116,11 @@ Public Sub RunMain()
 
     featureId = PromptFeatureId()
     If Len(featureId) = 0 Then Exit Sub
+    If Not IsValidFeatureIdFormat(featureId) Then
+        MsgBox "機能連番は S99-999-99 形式で入力してください。半角数字のみ使用できます。", vbExclamation
+        Exit Sub
+    End If
+
 
     Set matches = FindReferMatches(referWs, featureId)
     If matches.Count = 0 Then
@@ -179,8 +220,42 @@ Private Function PromptFeatureId() As String
     ' キャンセルまたは空文字は空で返し、呼び出し元で中断判断する。
     Dim s As String
 
+    If mUiOptions.Enabled Then
+        PromptFeatureId = Trim$(mUiOptions.featureId)
+        Exit Function
+    End If
+
     s = InputBox("機能連番を入力してください（例: S99-999-99）", "機能連番入力")
     PromptFeatureId = Trim$(s)
+End Function
+
+Private Function IsValidFeatureIdFormat(ByVal featureId As String) As Boolean
+    IsValidFeatureIdFormat = False
+
+    If Len(featureId) <> 10 Then Exit Function
+    If Left$(featureId, 1) <> "S" Then Exit Function
+    If Mid$(featureId, 4, 1) <> "-" Then Exit Function
+    If Mid$(featureId, 8, 1) <> "-" Then Exit Function
+
+    If Not IsAsciiDigitSequence(Mid$(featureId, 2, 2)) Then Exit Function
+    If Not IsAsciiDigitSequence(Mid$(featureId, 5, 3)) Then Exit Function
+    If Not IsAsciiDigitSequence(Mid$(featureId, 9, 2)) Then Exit Function
+
+    IsValidFeatureIdFormat = True
+End Function
+
+Private Function IsAsciiDigitSequence(ByVal text As String) As Boolean
+    Dim i As Long
+    Dim ch As String
+
+    If Len(text) = 0 Then Exit Function
+
+    For i = 1 To Len(text)
+        ch = Mid$(text, i, 1)
+        If ch < "0" Or ch > "9" Then Exit Function
+    Next i
+
+    IsAsciiDigitSequence = True
 End Function
 
 Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As String) As String
@@ -191,6 +266,23 @@ Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As Stri
     Dim desiredPath As String
 
     defaultFileName = alpha & OUTPUT_FILE_SUFFIX & OUTPUT_FILE_EXT
+
+    If mUiOptions.Enabled Then
+        If mUiOptions.useOutputPath Then
+            DecideOutputPath = BuildUniquePath(mUiOptions.outputPath)
+            Exit Function
+        End If
+
+        If Len(Trim$(macroWb.Path)) > 0 Then
+            desiredPath = macroWb.Path & "\" & defaultFileName
+        Else
+            DecideOutputPath = vbNullString
+            Exit Function
+        End If
+
+        DecideOutputPath = BuildUniquePath(desiredPath)
+        Exit Function
+    End If
 
     If Len(Trim$(macroWb.Path)) > 0 Then
         desiredPath = macroWb.Path & "\" & defaultFileName
@@ -413,7 +505,7 @@ Private Function ReadColumnValues( _
         endRow = startRow
     End If
 
-    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).Value
+    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).value
 
     If startRow = endRow Then
         singleCell(1, 1) = rawValues
@@ -543,8 +635,8 @@ Private Sub FillCaseSheet( _
 
     ' 【共通】/【個別】シートの共通セル埋め。
     ' 仕様: BD1 は β、BD3 は入力した機能連番。
-    targetWs.Range(TARGET_ALPHA_CELL).Value = beta
-    targetWs.Range(TARGET_FEATURE_ID_CELL).Value = featureId
+    targetWs.Range(TARGET_ALPHA_CELL).value = beta
+    targetWs.Range(TARGET_FEATURE_ID_CELL).value = featureId
 End Sub
 
 Private Sub FillSourceSheet( _
@@ -552,7 +644,7 @@ Private Sub FillSourceSheet( _
     ByVal gamma As String)
 
     ' 現行ソース（PHP）シートのセル埋め。
-    sourceWs.Range(TARGET_GAMMA_CELL).Value = gamma
+    sourceWs.Range(TARGET_GAMMA_CELL).value = gamma
 End Sub
 
 Private Function CopyTemplateSheet( _
@@ -788,5 +880,6 @@ Private Function RemoveExtension(ByVal fileNameText As String) As String
         RemoveExtension = fileNameText
     End If
 End Function
+
 
 

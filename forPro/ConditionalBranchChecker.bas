@@ -7,7 +7,9 @@ Option Explicit
 ' ==========================================
 
 Private Const SOURCE_TEXT_COL As Long = 3   ' C列
+Private Const FUNCTION_MARK_COL As Long = 1 ' A列
 Private Const MARK_COL As Long = 2          ' B列
+Private Const FUNCTION_MARK_TEXT As String = "★"
 Private Const SECTION_HEADER_START_ROW As Long = 9
 Private Const BLOCK_STEP_NORMAL As Long = 5
 Private Const INDIVIDUAL_TEMPLATE_INSERT_COUNT As Long = 50
@@ -20,9 +22,68 @@ Private Const SHEET_KEY_CURRENT_SOURCE As String = "現行ソース"
 Private Const SHEET_KEY_INDIVIDUAL_PREFIX As String = "【個別】"
 Private Const TEMPLATE_SNAPSHOT_SHEET_PREFIX As String = "__TMPROW15_"
 Private Const LEADING_FUNCTION_STARTS_FROM_B1 As Boolean = True  ' True: 最初の判定対象がfunctionならB1開始にする
+Private Const MARK_NON_FUNCTION_LINE_WITH_DASH As Boolean = True  ' True: function以外の対象行へ B{n}- を書き込む / False: function行だけ B{n} を書き込む
+Private Const MARK_FILL_ENABLED As Boolean = False  ' True: マーキング対象のB列セルを塗りつぶす / False: 塗りつぶさない
+Private Const MARK_FILL_COLOR_HEX As String = "#FFF2CC"  ' 塗りつぶし色（#RRGGBB / 0xRRGGBB）
+Public Type ConditionalBranchCheckerUiOptions
+    Enabled As Boolean
+    featureName As String
+    workbookPath As String
+    OverrideLeadingFunctionStartsFromB1 As Boolean
+    leadingFunctionStartsFromB1 As Boolean
+    OverrideMarkNonFunctionLineWithDash As Boolean
+    markNonFunctionLineWithDash As Boolean
+    OverrideMarkFillEnabled As Boolean
+    markFillEnabled As Boolean
+    UseMarkFillColorHex As Boolean
+    markFillColorHex As String
+End Type
 
+Private mUiOptions As ConditionalBranchCheckerUiOptions
 Private mTemplateSnapshotSheet As Worksheet
 Private mPreAllocatedWritableLastRow As Long
+
+Public Sub RunMainWithUiOptions(ByRef options As ConditionalBranchCheckerUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalBranchCheckerUiOptions
+    Dim defaults As ConditionalBranchCheckerUiOptions
+
+    defaults.Enabled = True
+    defaults.featureName = vbNullString
+    defaults.workbookPath = vbNullString
+    defaults.OverrideLeadingFunctionStartsFromB1 = True
+    defaults.leadingFunctionStartsFromB1 = LEADING_FUNCTION_STARTS_FROM_B1
+    defaults.OverrideMarkNonFunctionLineWithDash = True
+    defaults.markNonFunctionLineWithDash = MARK_NON_FUNCTION_LINE_WITH_DASH
+    defaults.OverrideMarkFillEnabled = True
+    defaults.markFillEnabled = MARK_FILL_ENABLED
+    defaults.UseMarkFillColorHex = True
+    defaults.markFillColorHex = MARK_FILL_COLOR_HEX
+
+    CreateConditionalBranchCheckerUiOptionsForForm = defaults
+End Function
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.featureName = vbNullString
+    mUiOptions.workbookPath = vbNullString
+    mUiOptions.OverrideLeadingFunctionStartsFromB1 = False
+    mUiOptions.leadingFunctionStartsFromB1 = False
+    mUiOptions.OverrideMarkNonFunctionLineWithDash = False
+    mUiOptions.markNonFunctionLineWithDash = False
+    mUiOptions.OverrideMarkFillEnabled = False
+    mUiOptions.markFillEnabled = False
+    mUiOptions.UseMarkFillColorHex = False
+    mUiOptions.markFillColorHex = vbNullString
+End Sub
 
 Public Sub RunMain()
     On Error GoTo ErrorHandler
@@ -108,13 +169,24 @@ End Sub
 Private Function PromptFeatureName() As String
     ' 機能名の入力を受け取り、前後空白を除去して返す
     Dim inputValue As String
+
+    If mUiOptions.Enabled Then
+        PromptFeatureName = Trim$(mUiOptions.featureName)
+        Exit Function
+    End If
+
     inputValue = InputBox("機能名を入力してください。", "機能名入力")
     PromptFeatureName = Trim$(inputValue)
 End Function
 
 Private Function SelectTargetWorkbookPath() As String
-    ' .xlsx を選択させる簡易ダイアログ
+    '.xlsx を選択させる簡易ダイアログ
     Dim selectedPath As Variant
+
+    If mUiOptions.Enabled Then
+        SelectTargetWorkbookPath = Trim$(mUiOptions.workbookPath)
+        Exit Function
+    End If
 
     selectedPath = Application.GetOpenFilename( _
         FileFilter:="Excel ブック (*.xlsx),*.xlsx", _
@@ -334,6 +406,81 @@ Private Function FindIndividualSheet(ByVal targetWorkbook As Workbook, ByVal fea
     Next ws
 End Function
 
+Private Function IsLeadingFunctionStartsFromB1Enabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideLeadingFunctionStartsFromB1 Then
+        IsLeadingFunctionStartsFromB1Enabled = mUiOptions.leadingFunctionStartsFromB1
+    Else
+        IsLeadingFunctionStartsFromB1Enabled = LEADING_FUNCTION_STARTS_FROM_B1
+    End If
+End Function
+
+Private Function IsMarkNonFunctionLineWithDashEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideMarkNonFunctionLineWithDash Then
+        IsMarkNonFunctionLineWithDashEnabled = mUiOptions.markNonFunctionLineWithDash
+    Else
+        IsMarkNonFunctionLineWithDashEnabled = MARK_NON_FUNCTION_LINE_WITH_DASH
+    End If
+End Function
+
+Private Function IsMarkFillEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideMarkFillEnabled Then
+        IsMarkFillEnabled = mUiOptions.markFillEnabled
+    Else
+        IsMarkFillEnabled = MARK_FILL_ENABLED
+    End If
+End Function
+
+Private Function ResolveMarkFillColorHexRaw() As String
+    If mUiOptions.Enabled And mUiOptions.UseMarkFillColorHex Then
+        ResolveMarkFillColorHexRaw = CStr(mUiOptions.markFillColorHex)
+    Else
+        ResolveMarkFillColorHexRaw = MARK_FILL_COLOR_HEX
+    End If
+End Function
+
+Private Function ResolveMarkFillColor() As Long
+    ResolveMarkFillColor = HexColorTextToColorLongOrDefault(ResolveMarkFillColorHexRaw(), RGB(255, 242, 204))
+End Function
+
+Private Sub ResetCurrentSourceMarkColumn(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
+    If sourceSheet Is Nothing Then Exit Sub
+    If lastRow <= 0 Then Exit Sub
+
+    With sourceSheet.Range(sourceSheet.Cells(1, MARK_COL), sourceSheet.Cells(lastRow, MARK_COL))
+        .ClearContents
+        .Interior.Pattern = xlNone
+    End With
+End Sub
+
+Private Sub ResetCurrentSourceFunctionMarks(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
+    Dim rowIndex As Long
+    Dim targetCell As Range
+
+    If sourceSheet Is Nothing Then Exit Sub
+    If lastRow <= 0 Then Exit Sub
+
+    For rowIndex = 1 To lastRow
+        Set targetCell = sourceSheet.Cells(rowIndex, FUNCTION_MARK_COL)
+        If CStr(targetCell.Value) = FUNCTION_MARK_TEXT Then
+            targetCell.ClearContents
+        End If
+    Next rowIndex
+End Sub
+
+Private Sub ApplyFunctionDeclarationMark(ByVal sourceSheet As Worksheet, ByVal rowIndex As Long)
+    If sourceSheet Is Nothing Then Exit Sub
+    If rowIndex <= 0 Then Exit Sub
+
+    sourceSheet.Cells(rowIndex, FUNCTION_MARK_COL).Value = FUNCTION_MARK_TEXT
+End Sub
+
+Private Sub ApplyMarkCellFill(ByVal targetCell As Range, ByVal fillColor As Long)
+    If targetCell Is Nothing Then Exit Sub
+
+    targetCell.Interior.Pattern = xlSolid
+    targetCell.Interior.Color = fillColor
+End Sub
+
 Private Sub MarkCurrentSourceSheet( _
     ByVal sourceSheet As Worksheet, _
     ByRef sourceTextValues As Variant, _
@@ -341,14 +488,28 @@ Private Sub MarkCurrentSourceSheet( _
     ByRef markedCount As Long, _
     ByVal leadingFunctionStartsAtB1 As Boolean)
 
-    ' 現行ソースシートのC列を走査し、対象構文に応じてB列へセクション番号を設定する
-    ' - function 行      : B(次セクション番号)   例: B2（先頭function開始時は設定でB1）
-    ' - その他の対象構文 : B(現セクション番号)- 例: B1-
+    ' 現行ソースシートのC列を走査し、対象構文に応じてA/B列へマーキングする
+    ' - function 行      : A列へ★、B列へ B(次セクション番号) を設定する
+    ' - その他の対象構文 : オプションONなら B(現セクション番号)- を設定し、OFFなら文字列は書き込まない
+    ' - 塗りつぶし      : オプションONならマーキング対象のB列セルを指定色で塗りつぶす
     Dim rowIndex As Long
     Dim lineText As String
     Dim currentSectionIndex As Long
+    Dim markNonFunctionLineWithDash As Boolean
+    Dim markFillEnabled As Boolean
+    Dim markFillColor As Long
+    Dim markCell As Range
 
     markedCount = 0
+    ResetCurrentSourceMarkColumn sourceSheet, lastRow
+    ResetCurrentSourceFunctionMarks sourceSheet, lastRow
+
+    markNonFunctionLineWithDash = IsMarkNonFunctionLineWithDashEnabled()
+    markFillEnabled = IsMarkFillEnabled()
+    If markFillEnabled Then
+        markFillColor = ResolveMarkFillColor()
+    End If
+
     If leadingFunctionStartsAtB1 Then
         currentSectionIndex = 0
     Else
@@ -370,10 +531,21 @@ Private Sub MarkCurrentSourceSheet( _
 
         If IsFunctionLine(lineText) Then
             currentSectionIndex = currentSectionIndex + 1
-            sourceSheet.Cells(rowIndex, MARK_COL).Value = "B" & CStr(currentSectionIndex)
+            ApplyFunctionDeclarationMark sourceSheet, rowIndex
+            Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
+            markCell.Value = "B" & CStr(currentSectionIndex)
+            If markFillEnabled Then
+                ApplyMarkCellFill markCell, markFillColor
+            End If
             markedCount = markedCount + 1
         ElseIf IsMarkTargetLine(lineText) Then
-            sourceSheet.Cells(rowIndex, MARK_COL).Value = "B" & CStr(currentSectionIndex) & "-"
+            Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
+            If markNonFunctionLineWithDash Then
+                markCell.Value = "B" & CStr(currentSectionIndex) & "-"
+            End If
+            If markFillEnabled Then
+                ApplyMarkCellFill markCell, markFillColor
+            End If
             markedCount = markedCount + 1
         End If
 
@@ -389,7 +561,7 @@ Private Function ShouldStartFunctionSectionFromB1( _
     Dim rowIndex As Long
     Dim lineText As String
 
-    If Not LEADING_FUNCTION_STARTS_FROM_B1 Then Exit Function
+    If Not IsLeadingFunctionStartsFromB1Enabled() Then Exit Function
 
     For rowIndex = 1 To lastRow
         lineText = GetCellTextFromValue(sourceTextValues(rowIndex, 1))
@@ -415,8 +587,16 @@ Private Function CollectSyntaxEvents( _
     ByRef sourceTextValues As Variant, _
     ByVal lastRow As Long) As Collection
 
-    ' 個別シート出力用に、現行ソースシートの構文イベントを上から順に収集する
-    ' 文字列ベース判定（部分一致）
+    Set CollectSyntaxEvents = CollectSyntaxEventsInRange(sourceTextValues, 1, lastRow)
+End Function
+
+Private Function CollectSyntaxEventsInRange( _
+    ByRef sourceTextValues As Variant, _
+    ByVal startRow As Long, _
+    ByVal lastRow As Long) As Collection
+
+    ' 個別シート出力用に、指定範囲の構文イベントを上から順に収集する
+    ' switch は1イベントとして保持しつつ、case/default 内の子イベントも再帰収集する
     Dim events As Collection
     Dim rowIndex As Long
     Dim lineText As String
@@ -424,7 +604,7 @@ Private Function CollectSyntaxEvents( _
     Dim switchEndRow As Long
 
     Set events = New Collection
-    rowIndex = 1
+    rowIndex = startRow
 
     Do While rowIndex <= lastRow
         lineText = GetCellTextFromValue(sourceTextValues(rowIndex, 1))
@@ -450,7 +630,7 @@ Private Function CollectSyntaxEvents( _
             Set eventItem = CreateFunctionEvent(ParseFunctionName(lineText))
             events.Add eventItem
 
-        ' switch は後続行の case/default を収集するので、まとめてイベント化する
+        ' switch は case/default と branch 内の子イベントをまとめてイベント化する
         ElseIf IsSwitchLine(lineText) Then
             Set eventItem = CollectSwitchEvent(sourceTextValues, rowIndex, lastRow, switchEndRow)
             events.Add eventItem
@@ -491,7 +671,7 @@ Private Function CollectSyntaxEvents( _
 ContinueLoop:
     Loop
 
-    Set CollectSyntaxEvents = events
+    Set CollectSyntaxEventsInRange = events
 End Function
 
 Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal syntaxEvents As Collection, ByVal leadingFunctionStartsAtB1 As Boolean)
@@ -500,10 +680,6 @@ Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal synta
 
     Dim sectionIndex As Long
     Dim nextBlockStartRow As Long
-    Dim i As Long
-    Dim eventItem As Collection
-    Dim eventKind As String
-    Dim functionName As String
     Dim startFromFunctionAtB1 As Boolean
     Dim plannedLastWriteRow As Long
     Dim errorNumber As Long
@@ -528,28 +704,7 @@ Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal synta
         nextBlockStartRow = SECTION_HEADER_START_ROW + 1
     End If
 
-    For i = 1 To syntaxEvents.Count
-        Set eventItem = syntaxEvents.item(i)
-        eventKind = UCase$(EventText(eventItem, "Kind"))
-
-        Select Case eventKind
-            Case "FUNCTION"
-                ' functionを検出したら、新しい処理セクション見出しを開始
-                sectionIndex = sectionIndex + 1
-                functionName = EventText(eventItem, "FunctionName", "UNKNOWN")
-                WriteSectionHeader individualSheet, nextBlockStartRow, sectionIndex, functionName
-                nextBlockStartRow = nextBlockStartRow + 1
-
-            Case "SWITCH"
-                EnsureSectionHeaderStarted individualSheet, sectionIndex, nextBlockStartRow
-                nextBlockStartRow = WriteSwitchBlock(individualSheet, nextBlockStartRow, eventItem)
-
-            Case "IF", "TERNARY", "FOR", "FOREACH", "WHILE"
-                EnsureSectionHeaderStarted individualSheet, sectionIndex, nextBlockStartRow
-                WriteNormalBlock individualSheet, nextBlockStartRow, eventItem
-                nextBlockStartRow = nextBlockStartRow + BLOCK_STEP_NORMAL
-        End Select
-    Next i
+    WriteSyntaxEventsRecursive individualSheet, syntaxEvents, sectionIndex, nextBlockStartRow
 
     ClearIndividualSheetTemplateSnapshot
     mPreAllocatedWritableLastRow = 0
@@ -564,6 +719,67 @@ ErrorHandler:
     mPreAllocatedWritableLastRow = 0
 
     Err.Raise errorNumber, errorSource, errorDescription
+End Sub
+
+Private Sub WriteSyntaxEventsRecursive( _
+    ByVal ws As Worksheet, _
+    ByVal syntaxEvents As Collection, _
+    ByRef sectionIndex As Long, _
+    ByRef nextBlockStartRow As Long)
+
+    Dim i As Long
+    Dim eventItem As Collection
+    Dim eventKind As String
+    Dim functionName As String
+
+    If syntaxEvents Is Nothing Then Exit Sub
+
+    For i = 1 To syntaxEvents.Count
+        Set eventItem = syntaxEvents.item(i)
+        eventKind = UCase$(EventText(eventItem, "Kind"))
+
+        Select Case eventKind
+            Case "FUNCTION"
+                ' functionを検出したら、新しい処理セクション見出しを開始
+                sectionIndex = sectionIndex + 1
+                functionName = EventText(eventItem, "FunctionName", "UNKNOWN")
+                WriteSectionHeader ws, nextBlockStartRow, sectionIndex, functionName
+                nextBlockStartRow = nextBlockStartRow + 1
+
+            Case "SWITCH"
+                EnsureSectionHeaderStarted ws, sectionIndex, nextBlockStartRow
+                nextBlockStartRow = WriteSwitchBlock(ws, nextBlockStartRow, eventItem)
+                WriteSwitchChildEvents ws, eventItem, sectionIndex, nextBlockStartRow
+
+            Case "IF", "TERNARY", "FOR", "FOREACH", "WHILE"
+                EnsureSectionHeaderStarted ws, sectionIndex, nextBlockStartRow
+                WriteNormalBlock ws, nextBlockStartRow, eventItem
+                nextBlockStartRow = nextBlockStartRow + BLOCK_STEP_NORMAL
+        End Select
+    Next i
+End Sub
+
+Private Sub WriteSwitchChildEvents( _
+    ByVal ws As Worksheet, _
+    ByVal switchEvent As Collection, _
+    ByRef sectionIndex As Long, _
+    ByRef nextBlockStartRow As Long)
+
+    Dim branches As Collection
+    Dim branchItem As Variant
+    Dim childEvents As Collection
+
+    Set branches = EventCollection(switchEvent, "Branches")
+    If branches Is Nothing Then Exit Sub
+
+    For Each branchItem In branches
+        Set childEvents = EventCollection(branchItem, "ChildEvents")
+        If Not childEvents Is Nothing Then
+            If childEvents.Count > 0 Then
+                WriteSyntaxEventsRecursive ws, childEvents, sectionIndex, nextBlockStartRow
+            End If
+        End If
+    Next branchItem
 End Sub
 
 Private Function IsFirstSyntaxEventFunction(ByVal syntaxEvents As Collection) As Boolean
@@ -594,11 +810,7 @@ Private Function EstimateLastWriteRow( _
 
     Dim sectionIndex As Long
     Dim nextBlockStartRow As Long
-    Dim i As Long
-    Dim eventItem As Collection
-    Dim eventKind As String
     Dim maxRow As Long
-    Dim switchLastRow As Long
 
     If startFromFunctionAtB1 Then
         sectionIndex = 0
@@ -608,6 +820,24 @@ Private Function EstimateLastWriteRow( _
         nextBlockStartRow = SECTION_HEADER_START_ROW + 1
         maxRow = SECTION_HEADER_START_ROW
     End If
+
+    AccumulateSyntaxEventLayout syntaxEvents, sectionIndex, nextBlockStartRow, maxRow
+
+    EstimateLastWriteRow = maxRow
+End Function
+
+Private Sub AccumulateSyntaxEventLayout( _
+    ByVal syntaxEvents As Collection, _
+    ByRef sectionIndex As Long, _
+    ByRef nextBlockStartRow As Long, _
+    ByRef maxRow As Long)
+
+    Dim i As Long
+    Dim eventItem As Collection
+    Dim eventKind As String
+    Dim switchLastRow As Long
+
+    If syntaxEvents Is Nothing Then Exit Sub
 
     For i = 1 To syntaxEvents.Count
         Set eventItem = syntaxEvents.item(i)
@@ -635,6 +865,7 @@ Private Function EstimateLastWriteRow( _
                     maxRow = switchLastRow
                 End If
                 nextBlockStartRow = switchLastRow + 2
+                AccumulateSwitchChildLayout eventItem, sectionIndex, nextBlockStartRow, maxRow
 
             Case "IF", "TERNARY", "FOR", "FOREACH", "WHILE"
                 If sectionIndex = 0 Then
@@ -651,9 +882,30 @@ Private Function EstimateLastWriteRow( _
                 nextBlockStartRow = nextBlockStartRow + BLOCK_STEP_NORMAL
         End Select
     Next i
+End Sub
 
-    EstimateLastWriteRow = maxRow
-End Function
+Private Sub AccumulateSwitchChildLayout( _
+    ByVal switchEvent As Collection, _
+    ByRef sectionIndex As Long, _
+    ByRef nextBlockStartRow As Long, _
+    ByRef maxRow As Long)
+
+    Dim branches As Collection
+    Dim branchItem As Variant
+    Dim childEvents As Collection
+
+    Set branches = EventCollection(switchEvent, "Branches")
+    If branches Is Nothing Then Exit Sub
+
+    For Each branchItem In branches
+        Set childEvents = EventCollection(branchItem, "ChildEvents")
+        If Not childEvents Is Nothing Then
+            If childEvents.Count > 0 Then
+                AccumulateSyntaxEventLayout childEvents, sectionIndex, nextBlockStartRow, maxRow
+            End If
+        End If
+    Next branchItem
+End Sub
 
 Private Function EstimateSwitchBlockLastRow(ByVal eventItem As Collection, ByVal startRow As Long) As Long
     Dim caseValues As Collection
@@ -703,33 +955,33 @@ Private Sub WriteSectionHeader(ByVal ws As Worksheet, ByVal headerRow As Long, B
     ' 処理セクション見出し行の出力
     EnsureIndividualSheetWritableRow ws, headerRow
 
-    ws.Range("A" & CStr(headerRow)).Value = "B" & CStr(sectionIndex)
-    ws.Range("K" & CStr(headerRow)).Value = SYMBOL_FILLED
-    ws.Range("M" & CStr(headerRow)).Value = "処理（" & sectionName & "）"
+    ws.Range("A" & CStr(headerRow)).value = "B" & CStr(sectionIndex)
+    ws.Range("K" & CStr(headerRow)).value = SYMBOL_FILLED
+    ws.Range("M" & CStr(headerRow)).value = "処理（" & sectionName & "）"
 End Sub
 
 Private Sub WriteNormalBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection)
     ' if / 三項演算子 / for / foreach / while の共通形式
     EnsureIndividualSheetWritableRow ws, startRow
-    ws.Range("E" & CStr(startRow)).Value = "***"
-    ws.Range("L" & CStr(startRow)).Value = SYMBOL_EMPTY
-    ws.Range("N" & CStr(startRow)).Value = EventText(eventItem, "Title")
+    ws.Range("E" & CStr(startRow)).value = "***"
+    ws.Range("L" & CStr(startRow)).value = SYMBOL_EMPTY
+    ws.Range("N" & CStr(startRow)).value = EventText(eventItem, "Title")
 
     EnsureIndividualSheetWritableRow ws, startRow + 1
-    ws.Range("H" & CStr(startRow + 1)).Value = 1
-    ws.Range("M" & CStr(startRow + 1)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 1)).Value = EventText(eventItem, "Cond1")
-    ws.Range("AX" & CStr(startRow + 1)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 1)).Value = EventText(eventItem, "Result1")
-    ws.Range("CF" & CStr(startRow + 1)).Value = "1,4"
+    ws.Range("H" & CStr(startRow + 1)).value = 1
+    ws.Range("M" & CStr(startRow + 1)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(startRow + 1)).value = EventText(eventItem, "Cond1")
+    ws.Range("AX" & CStr(startRow + 1)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(startRow + 1)).value = EventText(eventItem, "Result1")
+    ws.Range("CF" & CStr(startRow + 1)).value = "1,4"
 
     EnsureIndividualSheetWritableRow ws, startRow + 3
-    ws.Range("H" & CStr(startRow + 3)).Value = 2
-    ws.Range("M" & CStr(startRow + 3)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 3)).Value = EventText(eventItem, "Cond2")
-    ws.Range("AX" & CStr(startRow + 3)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 3)).Value = EventText(eventItem, "Result2")
-    ws.Range("CF" & CStr(startRow + 3)).Value = "1,4"
+    ws.Range("H" & CStr(startRow + 3)).value = 2
+    ws.Range("M" & CStr(startRow + 3)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(startRow + 3)).value = EventText(eventItem, "Cond2")
+    ws.Range("AX" & CStr(startRow + 3)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(startRow + 3)).value = EventText(eventItem, "Result2")
+    ws.Range("CF" & CStr(startRow + 3)).value = "1,4"
 End Sub
 
 Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection) As Long
@@ -754,9 +1006,9 @@ Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long,
     Set caseValues = EventCollection(eventItem, "CaseValues")
 
     EnsureIndividualSheetWritableRow ws, startRow
-    ws.Range("E" & CStr(startRow)).Value = "***"
-    ws.Range("L" & CStr(startRow)).Value = SYMBOL_EMPTY
-    ws.Range("N" & CStr(startRow)).Value = titleText
+    ws.Range("E" & CStr(startRow)).value = "***"
+    ws.Range("L" & CStr(startRow)).value = SYMBOL_EMPTY
+    ws.Range("N" & CStr(startRow)).value = titleText
 
     branchRow = startRow + 1
     seqNo = 1
@@ -788,12 +1040,12 @@ Private Sub WriteSwitchBranchRow(ByVal ws As Worksheet, ByVal rowIndex As Long, 
     ' switchの分岐行（case/default相当）の共通出力
     EnsureIndividualSheetWritableRow ws, rowIndex
 
-    ws.Range("H" & CStr(rowIndex)).Value = seqNo
-    ws.Range("M" & CStr(rowIndex)).Value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(rowIndex)).Value = conditionText
-    ws.Range("AX" & CStr(rowIndex)).Value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(rowIndex)).Value = expectedText
-    ws.Range("CF" & CStr(rowIndex)).Value = "1,4"
+    ws.Range("H" & CStr(rowIndex)).value = seqNo
+    ws.Range("M" & CStr(rowIndex)).value = SYMBOL_EMPTY
+    ws.Range("O" & CStr(rowIndex)).value = conditionText
+    ws.Range("AX" & CStr(rowIndex)).value = SYMBOL_EMPTY
+    ws.Range("AZ" & CStr(rowIndex)).value = expectedText
+    ws.Range("CF" & CStr(rowIndex)).value = "1,4"
 End Sub
 
 Private Sub EnsureIndividualSheetWritableRow(ByVal ws As Worksheet, ByVal rowIndex As Long)
@@ -900,7 +1152,7 @@ Private Sub PrepareIndividualSheetTemplateSnapshot(ByVal individualSheet As Work
 
     ClearIndividualSheetTemplateSnapshot
 
-    Set wb = individualSheet.Parent
+    Set wb = individualSheet.parent
     Set snapshotSheet = wb.Worksheets.Add(After:=wb.Worksheets(wb.Worksheets.Count))
     snapshotSheet.Name = BuildTemplateSnapshotSheetName(wb)
 
@@ -1031,85 +1283,144 @@ Private Function CollectSwitchEvent( _
     ByVal lastRow As Long, _
     ByRef endRow As Long) As Collection
 
-    ' switch行を起点に、後続のcase/defaultを簡易的に収集して1イベントにまとめる
-    ' 終端判定は厳密にせず、以下のような簡易条件で打ち切る:
-    ' - 次のfunctionが来た
-    ' - 次のswitchが来た
-    ' - case/defaultを拾った後に空行が2行続いた
+    ' switch行を起点に、case/default と branch 内の子イベントを再帰収集して1イベントにまとめる
+    ' 波括弧の深さを簡易追跡し、ネストした switch は branch 内の子イベントとして扱う
     Dim ev As Collection
     Dim caseValues As Collection
+    Dim branches As Collection
     Dim switchArg As String
     Dim hasDefault As Boolean
+    Dim currentBranch As Collection
+    Dim currentBranchContentStart As Long
     Dim r As Long
     Dim lineText As String
     Dim trimmedText As String
-    Dim blankStreak As Long
-    Dim foundBranch As Boolean
+    Dim depth As Long
+    Dim depthBeforeLine As Long
+    Dim switchStarted As Boolean
     Dim parsedCase As String
+    Dim reachedEnd As Boolean
 
     Set ev = NewEvent("SWITCH")
     Set caseValues = New Collection
+    Set branches = New Collection
     switchArg = ParseSwitchArgument(GetCellTextFromValue(sourceTextValues(switchRow, 1)))
+
+    depth = CountBraceDelta(GetCellTextFromValue(sourceTextValues(switchRow, 1)))
+    switchStarted = (depth > 0)
+    currentBranchContentStart = switchRow + 1
 
     For r = switchRow + 1 To lastRow
         lineText = GetCellTextFromValue(sourceTextValues(r, 1))
         trimmedText = Trim$(lineText)
+        depthBeforeLine = depth
 
-        ' コメント行（# / // 先頭）はswitch収集対象外
         If IsCommentLine(lineText) Then
-            blankStreak = 0
-            GoTo ContinueSwitchLoop
+            GoTo UpdateDepthAndContinue
         End If
 
-        ' 現行ソースシートの検索打ち切り条件（HTML開始タグ）
         If IsSourceSearchStopLine(lineText) Then
             Exit For
         End If
 
-        ' 次のfunction / switch は次の構文として扱いたいので、ここで打ち切る
-        If IsFunctionLine(lineText) Then
-            Exit For
-        End If
-        If IsSwitchLine(lineText) Then
-            Exit For
-        End If
-
-        If Len(trimmedText) = 0 Then
-            blankStreak = blankStreak + 1
-            If foundBranch And blankStreak >= 2 Then
-                Exit For
-            End If
-        Else
-            blankStreak = 0
-
+        ' 親switch直下の case/default だけを branch として扱う
+        If switchStarted And depthBeforeLine = 1 Then
             If IsCaseLine(lineText) Then
+                FinalizeSwitchBranch sourceTextValues, currentBranchContentStart, r - 1, currentBranch, branches
                 parsedCase = ParseCaseValue(lineText)
                 caseValues.Add parsedCase
-                foundBranch = True
+                Set currentBranch = NewSwitchBranchEvent(parsedCase, False)
+                currentBranchContentStart = r + 1
             ElseIf IsDefaultLine(lineText) Then
+                FinalizeSwitchBranch sourceTextValues, currentBranchContentStart, r - 1, currentBranch, branches
                 hasDefault = True
-                foundBranch = True
+                Set currentBranch = NewSwitchBranchEvent("DEFAULT", True)
+                currentBranchContentStart = r + 1
             End If
         End If
 
-ContinueSwitchLoop:
+UpdateDepthAndContinue:
+        If Not IsCommentLine(lineText) Then
+            If Len(trimmedText) > 0 Then
+                depth = depth + CountBraceDelta(lineText)
+                If Not switchStarted And depth > 0 Then
+                    switchStarted = True
+                End If
+            End If
+
+            If switchStarted And depth <= 0 Then
+                FinalizeSwitchBranch sourceTextValues, currentBranchContentStart, r - 1, currentBranch, branches
+                endRow = r
+                reachedEnd = True
+                Exit For
+            End If
+        End If
     Next r
+
+    If Not reachedEnd Then
+        If r > lastRow Then
+            endRow = lastRow
+        Else
+            endRow = r - 1
+            If endRow < switchRow Then
+                endRow = switchRow
+            End If
+        End If
+        FinalizeSwitchBranch sourceTextValues, currentBranchContentStart, endRow, currentBranch, branches
+    End If
 
     ev.Add switchArg, "SwitchArg"
     ev.Add hasDefault, "HasDefault"
     ev.Add caseValues, "CaseValues"
-
-    ' endRow は、外側ループで再判定したくない範囲の最後の行
-    If r > lastRow Then
-        endRow = lastRow
-    Else
-        endRow = r - 1
-        If endRow < switchRow Then
-            endRow = switchRow
-        End If
-    End If
+    ev.Add branches, "Branches"
 
     Set CollectSwitchEvent = ev
+End Function
+
+Private Function NewSwitchBranchEvent(ByVal branchLabel As String, ByVal isDefault As Boolean) As Collection
+    Dim branchEvent As Collection
+
+    Set branchEvent = New Collection
+    branchEvent.Add branchLabel, "Label"
+    branchEvent.Add isDefault, "IsDefault"
+
+    Set NewSwitchBranchEvent = branchEvent
+End Function
+
+Private Sub FinalizeSwitchBranch( _
+    ByRef sourceTextValues As Variant, _
+    ByVal contentStartRow As Long, _
+    ByVal contentEndRow As Long, _
+    ByVal branchEvent As Collection, _
+    ByVal branches As Collection)
+
+    Dim childEvents As Collection
+
+    If branchEvent Is Nothing Then Exit Sub
+
+    If contentEndRow >= contentStartRow Then
+        Set childEvents = CollectSyntaxEventsInRange(sourceTextValues, contentStartRow, contentEndRow)
+    Else
+        Set childEvents = New Collection
+    End If
+
+    branchEvent.Add childEvents, "ChildEvents"
+    branches.Add branchEvent
+End Sub
+
+Private Function CountBraceDelta(ByVal lineText As String) As Long
+    ' 波括弧の増減を簡易カウントする。文字列リテラルまでは見ない前提の軽量実装
+    Dim i As Long
+    Dim ch As String
+
+    For i = 1 To Len(lineText)
+        ch = Mid$(lineText, i, 1)
+        If ch = "{" Then
+            CountBraceDelta = CountBraceDelta + 1
+        ElseIf ch = "}" Then
+            CountBraceDelta = CountBraceDelta - 1
+        End If
+    Next i
 End Function
 
 Private Function ParseFunctionName(ByVal lineText As String) As String
@@ -1240,7 +1551,7 @@ Private Function ReadColumnValues( _
         endRow = startRow
     End If
 
-    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).Value
+    rawValues = ws.Range(ws.Cells(startRow, columnIndex), ws.Cells(endRow, columnIndex)).value
 
     If startRow = endRow Then
         singleCell(1, 1) = rawValues
@@ -1476,10 +1787,56 @@ Private Function ContainsText(ByVal sourceText As String, ByVal findText As Stri
     End If
 End Function
 
+Private Function HexColorTextToColorLongOrDefault(ByVal rawHex As String, ByVal defaultColor As Long) As Long
+    Dim t As String
+    Dim redPart As Long
+    Dim greenPart As Long
+    Dim bluePart As Long
+    Dim i As Long
+    Dim ch As String
+
+    t = UCase$(Trim$(rawHex))
+    If Len(t) = 0 Then
+        HexColorTextToColorLongOrDefault = defaultColor
+        Exit Function
+    End If
+
+    If Left$(t, 1) = "#" Then
+        t = Mid$(t, 2)
+    ElseIf Left$(t, 2) = "0X" Then
+        t = Mid$(t, 3)
+    End If
+
+    If Len(t) <> 6 Then
+        HexColorTextToColorLongOrDefault = defaultColor
+        Exit Function
+    End If
+
+    For i = 1 To 6
+        ch = Mid$(t, i, 1)
+        If InStr(1, "0123456789ABCDEF", ch, vbBinaryCompare) = 0 Then
+            HexColorTextToColorLongOrDefault = defaultColor
+            Exit Function
+        End If
+    Next i
+
+    On Error GoTo ParseError
+
+    redPart = CLng("&H" & Mid$(t, 1, 2))
+    greenPart = CLng("&H" & Mid$(t, 3, 2))
+    bluePart = CLng("&H" & Mid$(t, 5, 2))
+
+    HexColorTextToColorLongOrDefault = RGB(redPart, greenPart, bluePart)
+    Exit Function
+
+ParseError:
+    HexColorTextToColorLongOrDefault = defaultColor
+End Function
+
 Private Sub ActivateSheetForNextOpen(ByVal wb As Workbook, ByVal targetSheet As Worksheet)
     If wb Is Nothing Then Exit Sub
     If targetSheet Is Nothing Then Exit Sub
-    If Not (targetSheet.Parent Is wb) Then Exit Sub
+    If Not (targetSheet.parent Is wb) Then Exit Sub
 
     On Error Resume Next
     wb.Activate
@@ -1524,6 +1881,8 @@ Private Function EventCollection(ByVal ev As Collection, ByVal keyName As String
 NoCollection:
     Set EventCollection = Nothing
 End Function
+
+
 
 
 

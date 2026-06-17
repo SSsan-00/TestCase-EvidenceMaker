@@ -1,200 +1,299 @@
-﻿# VBAマクロ4モジュール ガイド
-対象モジュール:
+# VBAマクロ導入・運用ガイド
+
+このガイドは、単一ファイル運用を前提にした導入手順と、各マクロの使い方をまとめたものです。
+
+## 対象ファイル
+
+通常配布・導入で使うファイルは次の 1 本です。
+
+- `MacroSuiteSingleFileInstaller.bas`
+
+このファイルをインポートして `InstallMacroSuiteFromSingleFile` を実行すると、VBA プロジェクト内に次の 5 モジュールが展開されます。
+
 - `BetaEvidenceGenerator.bas`
 - `BetaTestCaseGenerator.bas`
 - `ConditionalBranchChecker.bas`
 - `EscapePartsMarking.bas`
+- `MacroToolsUserFormInstaller.bas`
 
----
+## 初回導入手順
 
-## 共通の使い方
-1. VBAエディタで各 `.bas` を標準モジュールとしてインポートします。
-2. 実行は `RunMain` を呼び出します（例: `Call BetaEvidenceGenerator.RunMain`）。
-3. 直接更新するマクロもあるため、実行前にバックアップを推奨します。
+1. 利用先の `.xlsm` を Excel で開きます。
+2. `Alt + F11` で VBE を開きます。
+3. `ファイル > ファイルのインポート` から `MacroSuiteSingleFileInstaller.bas` をインポートします。
+4. Excel の設定で `VBA プロジェクト オブジェクト モデルへのアクセスを信頼する` を有効にします。
+5. VBE のマクロ一覧から `InstallMacroSuiteFromSingleFile` を実行します。
+6. フォームを使う場合は `InstallMacroToolsUserForm` を実行します。
+7. フォームを開く場合は `OpenMacroToolsForm` を実行します。
+8. CONFIG シートを使う場合は `CreateMacroConfigSheet` を実行します。
+9. VBE の `Debug > Compile VBAProject` でコンパイル確認します。
 
----
+信頼設定の場所:
+`ファイル > オプション > トラスト センター > トラスト センターの設定 > マクロの設定 > VBA プロジェクト オブジェクト モデルへのアクセスを信頼する`
 
-## 1. `BetaEvidenceGenerator.bas`
+## 更新手順
 
-### 概要
-- 参照元 `.xlsx` を読み取り、共通/個別のエビデンス `.xlsx` を新規作成します。
-- `REFER` シートから入力ファイル名をキーに `referValue` と出力ファイル名要素（α/β/γ）を取得します。
-- 参照元シートは以下を対象にします。
-  - 共通: `【共通】` + `referValue`
-  - 個別: `【個別】` + `referValue`
-- 出力シートは `A1` テンプレを複製して作成します。
-- 共通ヘッダー `A1-1-1` は別処理で作成し、`A3/B3` の `〇〇〇` を `baseName` に置換します。
+`MacroSuiteSingleFileInstaller.bas` を差し替える場合は、次の順で更新します。
+
+1. VBE で既存の `MacroSuiteSingleFileInstaller` モジュールを削除します。
+2. 新しい `MacroSuiteSingleFileInstaller.bas` をインポートします。
+3. `InstallMacroSuiteFromSingleFile` を実行します。
+4. フォームを使う場合は `InstallMacroToolsUserForm` を再実行します。
+5. CONFIG シートを使う場合は `CreateMacroConfigSheet` を再実行します。
+6. `Debug > Compile VBAProject` を実行します。
+
+`InstallMacroSuiteFromSingleFile` は展開先の同名モジュールを置き換えます。既存の UserForm や CONFIG シートは自動更新されないため、必要に応じて再生成してください。
+
+## 単一ファイルの再生成
+
+開発側で各モジュールを編集した後、単一ファイルを作り直す場合は `RegenerateMacroSuiteSingleFileInstaller` を実行します。
+
+- 出力先は `ThisWorkbook.Path\MacroSuiteSingleFileInstaller.bas` です。
+- 現在の VBA プロジェクト内にある 5 モジュールを元に、埋め込み済みの単一ファイルを再生成します。
+
+## 利用方法の選択
+
+利用方法は 3 通りあります。
+
+- UserForm: `OpenMacroToolsForm` から画面操作で実行します。
+- CONFIG シート: `CreateMacroConfigSheet` で作成した設定シートから実行します。
+- 直接実行: 展開後の各モジュールの `RunMain` を直接実行します。
+
+通常運用では UserForm または CONFIG シートを推奨します。直接実行は、最小限の入力だけを求めるプロ向けの運用です。
+
+## UserForm の使い方
+
+1. `InstallMacroToolsUserForm` を実行します。
+2. `OpenMacroToolsForm` を実行します。
+3. 必要な入力欄を埋めます。
+4. 各処理の実行ボタンを押します。
+
+フォームはモデルレス表示です。フォームを開いたまま、同じ Excel インスタンス内のブックやシートを操作できます。
+
+## CONFIG シートの使い方
+
+1. `CreateMacroConfigSheet` を実行します。
+2. 作成された `CONFIG` シートの B 列に設定値を入力します。
+3. シート上の実行ボタン、または `Run...FromConfigSheet` マクロを実行します。
+
+CONFIG シートの基本構成:
+
+- A列: 項目名
+- B列: 入力値
+- C列: 説明
+- E列以降: 実行ボタン、参照ボタン
+
+CONFIG シートでは、ウィンドウ枠の固定は行いません。`CONFIG を更新` ボタンも置きません。
+
+## CONFIG シートの主な入力仕様
+
+- `C1` は空欄です。
+- `参照元ブックパス` / `対象ブックパス` の説明は `必須。` です。
+- `行オフセット` は `1以上の整数。` です。
+- `新側列数` は `3以上の整数。` です。
+- `出力シート絞り込み` は `空欄で全て出力。カンマ(,)で個別選択、コロン(:)で範囲選択。` です。
+- `出力シート絞り込み` / `除外パターン` / `読み飛ばし色` / `エスケープ関数一覧` はカンマ区切りで直接入力します。
+- `読み飛ばし色` の既定値は `#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080` です。
+- `グレーアウト対象` は `なし / A列のみ / B列のみ / A,B列` から選択します。
+- 色入力は `#RRGGBB / 0xRRGGBB / RRGGBB` 形式のみ許可します。
+
+## 1. BetaEvidenceGenerator
+
+### 目的
+
+参照元 `.xlsx` を読み取り、共通/個別エビデンス `.xlsx` を出力します。
 
 ### 主な入力
-- 参照元ファイル選択（`.xlsx`）
-- 入力ファイル名（例: `menu/mainmenu.php`）
-- スロット行オフセット（オプションでダイアログON/OFF）
-- 出力対象シート名（カンマ区切り、オプションでダイアログON/OFF）
 
-### 走査・書き込みルール
-- 参照元の `A/E/H` 列を `SOURCE_START_ROW=8` から走査します。
-- `A` に値が来たら出力先シートを切り替えます。
-- `E/H` は現在の出力先シートが確定している場合のみ処理します。
-- スロット書き込み先は以下です。
-  - `E/H` ペア確定: 出力先 `A/B`
-  - `H` 単体: 出力先 `B`
-  - `E` 単体確定: 出力先 `A`
-- 書き込み開始行は `FIRST_DEST_ROW=3`、既定スロット間隔は `SLOT_HEIGHT=50`。
+- 参照元ブックパス
+- 対象ファイル名
+- 行オフセット
+- 新側列数
+- 出力シート絞り込み
+- 横罫線 ON/OFF
+- 縦罫線 ON/OFF
+- 現行ラベルを削除する ON/OFF
+- 現行側の列数も追従する ON/OFF
+- 除外パターン ON/OFF
+- 除外パターン
+- グレーで塗りつぶしたセルを読み飛ばす ON/OFF
+- 読み飛ばし色一覧
 
-### 罫線ルール
-- 確定書き込み行で、`A:AA` の上罫線を引きます。
-- `3` 行目（`FIRST_DEST_ROW`）は上罫線を引きません。
-- `A/B` のどちらかに値がある行のみ対象です。
-- A1複製シートでは、右罫線設定が有効な場合に、最終書き込み行の `+50` 行まで指定列の右側に罫線を引きます。
+### 出力ブックの扱い
 
-### 除外・スキップ
-- 出力シート名は `Like` パターンで除外できます。
-- 参照元の `A/E/H` セルで、指定塗りつぶし色のセルは「未入力扱い」で読み飛ばします。
+- 想定ファイル名のブックが存在しない場合は新規作成します。
+- 想定ファイル名のブックが存在し、今回作成予定のシートと衝突しなければ、その既存ブックへ追加します。
+- 想定ファイル名のブックに同名シートが 1 つでもある場合は、連番付きの新規ブックへそのモード全体を出力します。
+- 既存ブックが開かれている場合は、その開いているブックへ追加して保存します。自動では閉じません。
+- 保存後に開いたときのアクティブシートは先頭シートです。
 
-### 主要オプション（ソース書き換えで切替）
-- `OPTION_TOP_BORDER_ENABLED`:
-  - `True`: 上罫線適用
-  - `False`: 上罫線無効
-- `OPTION_SLOT_HEIGHT_PROMPT_ENABLED`:
-  - `True`: オフセット入力ダイアログ表示
-  - `False`: `SLOT_HEIGHT` を使用
-- `OPTION_OUTPUT_SHEET_SELECTION_PROMPT_ENABLED`:
-  - `True`: 出力シート選択ダイアログ表示
-  - `False`: 全シート出力
-- `OPTION_EXCLUDE_OUTPUT_SHEET_BY_PATTERN_ENABLED`:
-  - `True`: 除外パターン有効
-  - `False`: 除外なし
-- `EXCLUDED_OUTPUT_SHEET_NAME_PATTERNS`:
-  - 既定: `A4,A5,A1-1,A2-3-1`
-  - カンマ区切りの `Like` パターン
-- `OPTION_SKIP_GRAY_FILLED_SOURCE_CELL_ENABLED`:
-  - `True`: 指定色セルを読み飛ばす
-  - `False`: 色判定なし
-- `SOURCE_SKIP_FILL_COLOR_HEX_CODES`:
-  - 既定: `#f2f2f2,#d9d9d9,#bfbfbf,#a6a6a6,#808080`
-- `OPTION_RIGHT_BORDER_ENABLED`:
-  - `True`: 右罫線処理を実行
-  - `False`: 右罫線処理を実行しない
-- `RIGHT_BORDER_TARGET_COL`:
-  - 右罫線を引く列番号（例: `26` = `Z`列）
+### 出力シート絞り込み
 
-### 出力ファイル名
-- 共通: `<α>_【共通】<β><γ>_単体テストエビデンス_初期開発.xlsx`
-- 個別: `<α>_【個別】<β><γ>_単体テストエビデンス_初期開発.xlsx`
-- 同名がある場合は `_001`, `_002` を付与して回避します。
+- `A1,A2,A3` のようなカンマ区切り指定に対応します。
+- `A1:A3` のような範囲指定に対応します。
+- `:A2` は `A1,A2` として扱います。
+- `A3:` は参照元に存在する最大番号まで展開します。
+- `A1:A3,B1` のように、範囲指定と単独指定を併用できます。
+- `A1:B3` のように、1 つの範囲指定内で共通/個別をまたぐ指定はエラーです。
 
----
+### 除外パターン
 
-## 2. `BetaTestCaseGenerator.bas`
+`A2-3-1` のように指定した場合、`A2-3-1` だけを除外します。`A2` 本体は除外しません。
 
-### 概要
-- 機能連番を入力し、`REFER` を検索してテストケース用 `.xlsx` を新規作成します。
-- `REFER` の `J` 列（α）で「機能連番を含む行」をヒット対象にします（部分一致）。
-- ヒット行の α/β/γ を使ってシートを複製・埋め込みします。
+`Like` 判定を使うため、`B3-*` のようなワイルドカード指定も可能です。
 
-### `REFER` 列定義
-- α: `J` 列（拡張子除去）
-- β: `F` 列
-- γ: `E` 列
+### 罫線と列構成
 
-### 作成シート
-- ヒット件数ぶん作成:
-  - `【共通】<β>`
-  - `【個別】<β>`
-  - `現行ソース（PHP）<β>`
-- 1枚のみ作成:
-  - `⇒参考`
-  - `現行画面`
+- 横罫線と縦罫線の位置は、列数変更後の構成に追従します。
+- 縦罫線は、最後の書き込み行に対して行オフセット分だけ延長します。
+- 横罫線 ON の場合、最後の縦罫線終端行に下罫線を引いて閉じます。
+- 縦罫線を引き直す前に、雛形由来の余分な縦罫線を UsedRange の最終行まで消します。
+- 列構成変更の対象は `A1` 複製シートです。`A1-1-1` は変更しません。
+- 共通モード先頭シートでは、`A1-1-1` の `A3/B3` にある `○○○` を `baseName` へ置換します。
 
-### セル埋め
-- `【共通】<β>` / `【個別】<β>`:
-  - `BD1 = β`
-  - `BD3 = 入力した機能連番`
-- `現行ソース（PHP）<β>`:
-  - `C4 = γ`
+### 直接実行
 
-### 出力ファイル
-- `<α>_単体テストケース_初期開発.xlsx`
-- 同名時は `_001`, `_002` を付与
-- `ThisWorkbook` が保存済みなら同フォルダ、未保存なら SaveAs ダイアログ
+`RunMain` を直接実行した場合は、参照元ブックの選択と対象ファイル名の入力を求めます。行オフセットや出力シート絞り込みの直接入力ダイアログは既定で OFF です。
 
-### テンプレ前提
-- `【共通】機能名`
-- `【個別】機能名`
-- `⇒参考`
-- `現行ソース（PHP）`
-- `現行画面`
-- `REFER`
+## 2. BetaTestCaseGenerator
 
----
+### 目的
 
-## 3. `ConditionalBranchChecker.bas`
+テストケースブックを新規作成します。保存後に開いたときのアクティブシートは先頭シートです。
 
-### 概要
-- 対象 `.xlsx` の「現行ソース」シートを解析し、B列マーキングと個別シート出力を行います。
-- 対象ブックは直接更新して保存します（別名出力ではありません）。
+### 入力仕様
 
-### 対象シート判定
-- 現行ソースシート:
-  - シート名に `現行ソース` を含む候補を収集
-  - 候補1件なら採用
-  - 候補複数なら、入力機能名と完全一致するものを採用
-- 個別シート:
-  - `【個別】` + 機能名（完全一致）
+- 機能連番は `S99-999-99` 形式のみ許可します。
+- `S` は大文字固定です。
+- 数字部は半角 `0-9` のみ許可します。
+- 形式不正時はエラーで中断します。
 
-### 現行ソースB列マーキング
-- 解析列: C列
-- コメント行（先頭 `#` / `//`）は除外
-- `<!doctype` / `<html` / `<head` を検出したら以降は解析停止
-- `function` 行: `Bn`
-- それ以外の対象構文（if/else if/elseif/else/三項/for/foreach/while/switch/case/default）: `Bn-`
+### 直接実行
+
+`RunMain` を直接実行した場合は、機能連番の入力を求めます。
+
+## 3. ConditionalBranchChecker
+
+### 目的
+
+対象ブックを走査し、条件分岐の一覧化、個別シートへの出力、現行ソースシートへのマーキングを行います。
+
+### 主な入力
+
+- 機能名
+- 対象ブックパス
+- 先頭FunctionをB1開始にする ON/OFF
+- 非Function行に `B1-` 形式を書き込む ON/OFF
+- マーキングセルを塗りつぶす ON/OFF
+- 塗りつぶし色
+
+### 現行ソースシートのマーキング
+
+- `function` 宣言行は A 列へ `★` を書き込みます。
+- `function` 宣言行は B 列へ `B1` / `B2` ... を書き込みます。
+- A 列に既存値がある場合も、`function` 宣言行では `★` で上書きします。
+- 前回実行で残った A 列の `★` は、今回の再判定前に消します。
+- 非Function行は、オプション ON 時のみ B 列へ `B1-` 形式を書き込みます。
+- マーキングセルの塗りつぶしは B 列セルに適用します。
+- 再度ブックを開いたときのアクティブシートは、走査した現行ソースシートです。
 
 ### 個別シート出力
-- 構文イベント（FUNCTION, SWITCH, IF, TERNARY, FOR, FOREACH, WHILE）を抽出して所定セルへ記入
-- `switch` は case/default を収集して分岐行を出力
-- 行不足時は、個別シート `15` 行目から `10` 行テンプレを退避し、必要に応じて `50` 行単位で挿入
 
-### オプション
-- `LEADING_FUNCTION_STARTS_FROM_B1`:
-  - `True`: 先頭の判定対象が function のとき `B1` 開始
-  - `False`: 従来どおり `B2` 開始
+- `switch` 本体を書いた直後に、`case/default` 内の `if / for / while / switch` などをソース出現順で続けて書き込みます。
+- ネストした `switch` も、親 `switch` の直後で深さ優先に展開します。
+- `elseif` は判定対象に含みます。
 
----
+### 直接実行
 
-## 4. `EscapePartsMarking.bas`
+`RunMain` を直接実行した場合は、機能名の入力と対象ブックの選択を求めます。
 
-### 概要
-- 選択したExcelの、シート名に `A1-1-1` を含むシートだけを処理します。
-- B列の `prefix(...)` 部分を赤字・太字にします（4行目以降）。
-- ヒット行のC列に固定メッセージ（既定: `SQLインジェクション対策済み`）を赤字で設定します。
-- 対象ブックを上書き保存します。
+## 4. EscapePartsMarking
 
-### 追加されたA列のみ入力行の塗りつぶし
-- 条件:
-  - 行番号 `4` 以上
-  - A列に値あり
-  - B列が空
-- 処理:
-  - `OPTION_ONLY_A_VALUE_ROW_FILL_TARGET` に応じて塗りつぶし列を切り替え
-  - `None`: 塗りつぶししない
-  - `Left`: `A` 列のみ
-  - `Right`: `B` 列のみ
-  - `Both`: `A/B` 列
+### 目的
 
-### オプション・色設定
-- `OPTION_ONLY_A_VALUE_ROW_FILL_TARGET`:
-  - `None` / `Left` / `Right` / `Both`
-  - 既定: `Both`
-- `ONLY_A_VALUE_ROW_FILL_COLOR_HEX`:
-  - 既定: `#a6a6a6`
-  - `#RRGGBB` で変更可能
+対象ブックを走査し、エスケープ対象関数のマーキングを行います。
 
-### prefix設定
-- モジュール先頭の `ESCAPE_TARGET_PREFIXES_CSV` を編集して追加・変更します（カンマ区切り）。
-- 既定: `sqlS,sqlN`
+### 主な入力
 
----
+- 対象ブックパス
+- 完了メッセージ
+- エスケープ関数一覧
+- グレーアウト対象
+- 塗りつぶし色
 
-## 変更時の確認ポイント
-- テンプレシート名や `REFER` 列定義を変更する場合は、同名定数を優先して更新してください。
-- すべてのオプションはソース内 `Const` で管理しています。運用ルールに合わせて `True/False` または文字列定数を編集してください。
+### 既定のエスケープ対象関数
+
+既定値は次の通りです。
+
+```text
+pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr
+```
+
+### グレーアウト対象
+
+`A列にしか値が入っていない行` について、次のいずれかを選択できます。
+
+- `なし`
+- `A列のみ`
+- `B列のみ`
+- `A,B列`
+
+内部値は `None / Left / Right / Both` です。
+
+### 直接実行
+
+`RunMain` を直接実行した場合は、対象ブックの選択を求めます。
+
+## 5. MacroToolsUserFormInstaller
+
+### 役割
+
+- `frmMacroTools` と `modMacroToolsFormEntry` を自動生成します。
+- UserForm 実行ブリッジを提供します。
+- CONFIG シートの作成、補助 UI、実行マクロを提供します。
+
+### 提供マクロ
+
+- `InstallMacroToolsUserForm`
+- `OpenMacroToolsForm`
+- `CreateMacroConfigSheet`
+- `OpenMacroConfigSheet`
+- `RunBetaEvidenceFromConfigSheet`
+- `RunBetaTestCaseFromConfigSheet`
+- `RunConditionalBranchCheckerFromConfigSheet`
+- `RunEscapePartsMarkingFromConfigSheet`
+
+## 入力検証
+
+次の色入力は、実行前に `#RRGGBB / 0xRRGGBB / RRGGBB` 形式か検証します。
+
+- 条件分岐チェックの塗りつぶし色
+- エスケープ箇所マーキングの塗りつぶし色
+- エビデンス生成の読み飛ばし色一覧
+
+不正な値がある場合は、処理を開始せずにエラーを表示します。CONFIG シート実行時は `CONFIG!Bxx` 付きで対象セルを示します。
+
+## よくあるエラーと対処
+
+### `1004` エラー
+
+`VBA プロジェクト オブジェクト モデルへのアクセスを信頼する` が OFF の可能性があります。トラストセンターの設定を確認してください。
+
+### `75` エラー
+
+パスや一時ファイル作成に失敗している可能性があります。ブックが保存済みか、対象フォルダに書き込み権限があるかを確認してください。
+
+### `438` エラー
+
+古いフォームや古いモジュールが残っている可能性があります。`InstallMacroSuiteFromSingleFile` と `InstallMacroToolsUserForm` を再実行してください。
+
+### コンパイルエラー
+
+古いモジュールが残っている可能性があります。単一ファイルを再インポートし、`InstallMacroSuiteFromSingleFile` を実行してからコンパイルしてください。
+
+## 運用メモ
+
+- 既定値を変える場合は、各本体モジュール先頭の `Const` を編集してください。
+- UserForm と CONFIG は同じ実行ブリッジを通すため、入力検証の挙動は揃います。
+- 対象ブックを直接更新するマクロを実行する前は、バックアップを取る運用を推奨します。
+- 単一ファイル運用では、通常 `MacroSuiteSingleFileInstaller.bas` だけを配布・導入対象にします。

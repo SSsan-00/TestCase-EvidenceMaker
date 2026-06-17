@@ -2,9 +2,67 @@ Attribute VB_Name = "EscapePartsMarking"
 Option Explicit
 
 Private Const DEFAULT_COMPLETION_MESSAGE As String = "SQLインジェクション対策済み"
-Private Const ESCAPE_TARGET_PREFIXES_CSV As String = "sqlS,sqlN"
+Private Const ESCAPE_TARGET_PREFIXES_CSV As String = "pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr"
 Private Const OPTION_ONLY_A_VALUE_ROW_FILL_TARGET As String = "Both" ' None / Left / Right / Both
 Private Const ONLY_A_VALUE_ROW_FILL_COLOR_HEX As String = "#a6a6a6"
+Public Type EscapePartsMarkingUiOptions
+    Enabled As Boolean
+    TargetWorkbookPath As String
+    UseCompletionMessage As Boolean
+    completionMessage As String
+    UseEscapeTargetPrefixesCsv As Boolean
+    escapeTargetPrefixesCsv As String
+    UseOnlyAValueRowFillTarget As Boolean
+    onlyAValueRowFillTarget As String
+    UseOnlyAValueRowFillColorHex As Boolean
+    onlyAValueRowFillColorHex As String
+End Type
+
+Private mUiOptions As EscapePartsMarkingUiOptions
+
+Public Sub RunMainWithUiOptions(ByRef options As EscapePartsMarkingUiOptions)
+    ClearUiOptions
+    mUiOptions = options
+    mUiOptions.Enabled = True
+
+    RunMain
+
+    ClearUiOptions
+End Sub
+
+Public Function CreateEscapePartsMarkingUiOptionsForForm() As EscapePartsMarkingUiOptions
+    Dim defaults As EscapePartsMarkingUiOptions
+
+    defaults.Enabled = True
+    defaults.TargetWorkbookPath = vbNullString
+
+    defaults.UseCompletionMessage = True
+    defaults.completionMessage = DEFAULT_COMPLETION_MESSAGE
+
+    defaults.UseEscapeTargetPrefixesCsv = True
+    defaults.escapeTargetPrefixesCsv = ESCAPE_TARGET_PREFIXES_CSV
+
+    defaults.UseOnlyAValueRowFillTarget = True
+    defaults.onlyAValueRowFillTarget = OPTION_ONLY_A_VALUE_ROW_FILL_TARGET
+
+    defaults.UseOnlyAValueRowFillColorHex = True
+    defaults.onlyAValueRowFillColorHex = ONLY_A_VALUE_ROW_FILL_COLOR_HEX
+
+    CreateEscapePartsMarkingUiOptionsForForm = defaults
+End Function
+
+Private Sub ClearUiOptions()
+    mUiOptions.Enabled = False
+    mUiOptions.TargetWorkbookPath = vbNullString
+    mUiOptions.UseCompletionMessage = False
+    mUiOptions.completionMessage = vbNullString
+    mUiOptions.UseEscapeTargetPrefixesCsv = False
+    mUiOptions.escapeTargetPrefixesCsv = vbNullString
+    mUiOptions.UseOnlyAValueRowFillTarget = False
+    mUiOptions.onlyAValueRowFillTarget = vbNullString
+    mUiOptions.UseOnlyAValueRowFillColorHex = False
+    mUiOptions.onlyAValueRowFillColorHex = vbNullString
+End Sub
 
 '============================================================
 ' xlsmツール（別ファイル）から、選択した xlsx を開いて加工するマクロ
@@ -16,7 +74,7 @@ Private Const ONLY_A_VALUE_ROW_FILL_COLOR_HEX As String = "#a6a6a6"
 ' - ヒットした行の C列に固定メッセージ（既定: "SQLインジェクション対策済み"）を赤字で書く
 '
 ' 前提:
-'  - モジュール先頭の ESCAPE_TARGET_PREFIXES_CSV にエスケープ関数（例: sqlS, sqlN）を列挙していること
+'  - モジュール先頭の ESCAPE_TARGET_PREFIXES_CSV にエスケープ関数（例: pg_escape_string, sqlS, sqlN）を列挙していること
 '============================================================
 Public Sub RunMain()
     Dim targetPath As String
@@ -26,7 +84,7 @@ Public Sub RunMain()
     Dim prefixes As Collection
     Set prefixes = LoadPrefixesFromCode()
     If prefixes.Count = 0 Then
-        MsgBox "ESCAPE_TARGET_PREFIXES_CSV に prefix（例: sqlS, sqlN）を1つ以上設定してください。", vbExclamation
+        MsgBox "ESCAPE_TARGET_PREFIXES_CSV に prefix（例: pg_escape_string, sqlS, sqlN）を1つ以上設定してください。", vbExclamation
         Exit Sub
     End If
 
@@ -62,7 +120,7 @@ Public Sub RunMain()
 
     For Each ws In wb.Worksheets
         If InStr(1, ws.Name, "A1-1-1", vbBinaryCompare) > 0 Then
-            ProcessOneSheet ws, prefixes, DEFAULT_COMPLETION_MESSAGE
+            ProcessOneSheet ws, prefixes, ResolveCompletionMessage()
             processedSheetCount = processedSheetCount + 1
         End If
     Next ws
@@ -173,7 +231,7 @@ End Sub
 Private Function ResolveOnlyAValueRowFillTargetOption() As String
     Dim normalized As String
 
-    normalized = UCase$(Trim$(OPTION_ONLY_A_VALUE_ROW_FILL_TARGET))
+    normalized = UCase$(Trim$(ResolveOnlyAValueRowFillTargetRaw()))
 
     Select Case normalized
         Case "NONE", "LEFT", "RIGHT", "BOTH"
@@ -184,7 +242,7 @@ Private Function ResolveOnlyAValueRowFillTargetOption() As String
 End Function
 
 Private Function ResolveOnlyAValueRowFillColor() As Long
-    ResolveOnlyAValueRowFillColor = HexColorTextToColorLongOrDefault(ONLY_A_VALUE_ROW_FILL_COLOR_HEX, RGB(166, 166, 166))
+    ResolveOnlyAValueRowFillColor = HexColorTextToColorLongOrDefault(ResolveOnlyAValueRowFillColorHexRaw(), RGB(166, 166, 166))
 End Function
 
 Private Function HasCellValueForOnlyARowRule(ByVal value As Variant) As Boolean
@@ -421,7 +479,7 @@ Private Function LoadPrefixesFromCode() As Collection
     Dim i As Long
     Dim v As String
 
-    rawPrefixes = Replace(ESCAPE_TARGET_PREFIXES_CSV, "，", ",")
+    rawPrefixes = Replace(ResolveEscapeTargetPrefixesCsvRaw(), "，", ",")
     prefixItems = Split(rawPrefixes, ",")
 
     For i = LBound(prefixItems) To UBound(prefixItems)
@@ -437,8 +495,46 @@ End Function
 '============================================================
 ' ファイル選択ダイアログ（Excelファイル用）
 '============================================================
+Private Function ResolveCompletionMessage() As String
+    If mUiOptions.Enabled And mUiOptions.UseCompletionMessage Then
+        ResolveCompletionMessage = CStr(mUiOptions.completionMessage)
+    Else
+        ResolveCompletionMessage = DEFAULT_COMPLETION_MESSAGE
+    End If
+End Function
+
+Private Function ResolveEscapeTargetPrefixesCsvRaw() As String
+    If mUiOptions.Enabled And mUiOptions.UseEscapeTargetPrefixesCsv Then
+        ResolveEscapeTargetPrefixesCsvRaw = CStr(mUiOptions.escapeTargetPrefixesCsv)
+    Else
+        ResolveEscapeTargetPrefixesCsvRaw = ESCAPE_TARGET_PREFIXES_CSV
+    End If
+End Function
+
+Private Function ResolveOnlyAValueRowFillTargetRaw() As String
+    If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillTarget Then
+        ResolveOnlyAValueRowFillTargetRaw = CStr(mUiOptions.onlyAValueRowFillTarget)
+    Else
+        ResolveOnlyAValueRowFillTargetRaw = OPTION_ONLY_A_VALUE_ROW_FILL_TARGET
+    End If
+End Function
+
+Private Function ResolveOnlyAValueRowFillColorHexRaw() As String
+    If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillColorHex Then
+        ResolveOnlyAValueRowFillColorHexRaw = CStr(mUiOptions.onlyAValueRowFillColorHex)
+    Else
+        ResolveOnlyAValueRowFillColorHexRaw = ONLY_A_VALUE_ROW_FILL_COLOR_HEX
+    End If
+End Function
+
 Private Function PickExcelFilePath() As String
     Dim fd As Object
+
+    If mUiOptions.Enabled Then
+        PickExcelFilePath = Trim$(mUiOptions.TargetWorkbookPath)
+        Exit Function
+    End If
+
     Set fd = Application.FileDialog(3) ' 3 = msoFileDialogFilePicker
 
     With fd
@@ -455,6 +551,8 @@ Private Function PickExcelFilePath() As String
         PickExcelFilePath = .SelectedItems(1)
     End With
 End Function
+
+
 
 
 
