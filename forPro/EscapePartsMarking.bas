@@ -310,7 +310,7 @@ End Function
 ' セル内の複数パターンをすべて装飾する
 ' - prefix + "(" の開始位置を探す
 ' - 直前が "." の場合は、左側の識別子（例: DbHelper）も含める
-' - そこから次の ")" までを赤字＋太字
+' - そこから対応する ")" までを赤字＋太字（ネスト括弧を考慮）
 ' - 同一セル内に複数存在してもすべて処理
 '
 ' 戻り値:
@@ -343,7 +343,7 @@ End Function
 '============================================================
 ' 1つの prefix について、セル内の全出現箇所を装飾する
 ' - 例: prefix="sqlS" なら "sqlS(" をすべて探す
-' - 見つけたら直後の ")" を探す
+' - 見つけたら対応する ")" を探す（ネスト括弧を考慮）
 ' - 直前が "." の場合は、左側の識別子も装飾範囲に含める
 '   例: "DbHelper.sqlS(...)" → "DbHelper.sqlS(...)" 全体を装飾
 ' - 同じセル内に複数あっても全部処理する
@@ -363,8 +363,11 @@ Private Function MarkAllOccurrencesForOnePrefix(ByVal cell As Range, ByVal text 
         prefixPos = InStr(searchStartPos, text, pattern, vbTextCompare)
         If prefixPos = 0 Then Exit Do
 
+        Dim openParenPos As Long
+        openParenPos = prefixPos + Len(prefix)
+
         Dim closePos As Long
-        closePos = InStr(prefixPos + Len(pattern), text, ")", vbTextCompare)
+        closePos = FindMatchingClosingParen(text, openParenPos)
 
         If closePos > 0 Then
             '----------------------------------------------------
@@ -398,6 +401,57 @@ Private Function MarkAllOccurrencesForOnePrefix(ByVal cell As Range, ByVal text 
     Loop
 
     MarkAllOccurrencesForOnePrefix = hit
+End Function
+
+'============================================================
+' 開き括弧に対応する閉じ括弧を探す
+' - sqlS(xxx + trim(yyy) + "zzz") のようなネスト括弧に対応する
+' - シングルクォート/ダブルクォート内の括弧は無視する
+' - バックスラッシュエスケープと、同じ引用符を2つ重ねるエスケープを考慮する
+'============================================================
+Private Function FindMatchingClosingParen(ByVal text As String, ByVal openParenPos As Long) As Long
+    If openParenPos < 1 Or openParenPos > Len(text) Then Exit Function
+    If Mid$(text, openParenPos, 1) <> "(" Then Exit Function
+
+    Dim depth As Long
+    Dim scanPos As Long
+    Dim ch As String
+    Dim quoteChar As String
+    Dim inQuote As Boolean
+
+    depth = 0
+    inQuote = False
+    quoteChar = vbNullString
+
+    For scanPos = openParenPos To Len(text)
+        ch = Mid$(text, scanPos, 1)
+
+        If inQuote Then
+            If ch = quoteChar Then
+                If scanPos < Len(text) And Mid$(text, scanPos + 1, 1) = quoteChar Then
+                    scanPos = scanPos + 1
+                Else
+                    inQuote = False
+                    quoteChar = vbNullString
+                End If
+            ElseIf ch = "\" Then
+                If scanPos < Len(text) Then scanPos = scanPos + 1
+            End If
+        Else
+            If ch = """" Or ch = "'" Then
+                inQuote = True
+                quoteChar = ch
+            ElseIf ch = "(" Then
+                depth = depth + 1
+            ElseIf ch = ")" Then
+                depth = depth - 1
+                If depth = 0 Then
+                    FindMatchingClosingParen = scanPos
+                    Exit Function
+                End If
+            End If
+        End If
+    Next scanPos
 End Function
 
 '============================================================

@@ -16,40 +16,153 @@
 - `EscapePartsMarking.bas`
 - `MacroToolsUserFormInstaller.bas`
 
-## 初回導入手順
+## まず結論
 
-1. 利用先の `.xlsm` を Excel で開きます。
-2. `Alt + F11` で VBE を開きます。
-3. `ファイル > ファイルのインポート` から `MacroSuiteSingleFileInstaller.bas` をインポートします。
-4. Excel の設定で `VBA プロジェクト オブジェクト モデルへのアクセスを信頼する` を有効にします。
-5. VBE のマクロ一覧から `InstallMacroSuiteFromSingleFile` を実行します。
-6. フォームを使う場合は `InstallMacroToolsUserForm` を実行します。
-7. フォームを開く場合は `OpenMacroToolsForm` を実行します。
-8. CONFIG シートを使う場合は `CreateMacroConfigSheet` を実行します。
-9. VBE の `Debug > Compile VBAProject` でコンパイル確認します。
+フォームを使い始めるために、UserForm を自分で挿入したり、フォーム名を自分で変更したりする必要はありません。
+
+通常は次の流れだけで使い始めます。
+
+1. `MacroSuiteSingleFileInstaller.bas` をインポートします。
+2. `InstallMacroSuiteFromSingleFile` を実行します。
+3. `InstallMacroToolsUserForm` を実行します。
+4. `OpenMacroToolsForm` を実行します。
+
+`InstallMacroToolsUserForm` が、`frmMacroTools` という UserForm と、フォームを開くための `modMacroToolsFormEntry` を自動で作成します。
+
+手動で UserForm を挿入する必要があるのは、`InstallMacroToolsUserForm` 実行時に `UserForm component could not be created` と表示された例外時だけです。通常運用では手動挿入しません。
+
+## マクロ一覧に表示されるタイミング
+
+導入直後は、すべてのマクロが最初から見えているわけではありません。表示される順番は次の通りです。
+
+| 状態 | マクロ一覧で実行するもの | 実行後に増えるもの |
+| --- | --- | --- |
+| `MacroSuiteSingleFileInstaller.bas` をインポートした直後 | `InstallMacroSuiteFromSingleFile` | 本体 5 モジュール |
+| `InstallMacroSuiteFromSingleFile` 実行後 | `InstallMacroToolsUserForm` | `frmMacroTools` と `modMacroToolsFormEntry` |
+| `InstallMacroToolsUserForm` 実行後 | `OpenMacroToolsForm` | フォーム画面を開ける状態 |
+
+つまり、`OpenMacroToolsForm` が最初から見えないのは正常です。先に `InstallMacroSuiteFromSingleFile`、次に `InstallMacroToolsUserForm` を実行してください。
+
+## 導入前に確認すること
+
+初回導入や再展開を行う前に、次を確認してください。
+
+- 作業先ブックは `.xlsm` 形式で保存済みにします。
+- マクロを有効化します。
+- VBE のプロジェクトがパスワードロックされていない状態にします。
+- フォームを再展開する場合は、開いている `frmMacroTools` を閉じます。
+- `MacroSuiteSingleFileInstaller.bas` は通常、この 1 ファイルだけをインポートします。`forPro` 配下の個別 `.bas` は通常運用では直接インポートしません。
 
 信頼設定の場所:
 `ファイル > オプション > トラスト センター > トラスト センターの設定 > マクロの設定 > VBA プロジェクト オブジェクト モデルへのアクセスを信頼する`
 
-## 更新手順
+この信頼設定が OFF の場合、フォーム作成やモジュール展開で `1004` エラーになることがあります。
 
-`MacroSuiteSingleFileInstaller.bas` を差し替える場合は、次の順で更新します。
+## 導入用マクロの役割
 
-1. VBE で既存の `MacroSuiteSingleFileInstaller` モジュールを削除します。
-2. 新しい `MacroSuiteSingleFileInstaller.bas` をインポートします。
-3. `InstallMacroSuiteFromSingleFile` を実行します。
-4. フォームを使う場合は `InstallMacroToolsUserForm` を再実行します。
-5. CONFIG シートを使う場合は `CreateMacroConfigSheet` を再実行します。
-6. `Debug > Compile VBAProject` を実行します。
+導入時によく使うマクロは次の 5 つです。
 
-`InstallMacroSuiteFromSingleFile` は展開先の同名モジュールを置き換えます。既存の UserForm や CONFIG シートは自動更新されないため、必要に応じて再生成してください。
+- `InstallMacroSuiteFromSingleFile`: 単一ファイル内に埋め込まれている本体 5 モジュールを VBA プロジェクトへ展開します。
+- `InstallMacroToolsUserForm`: `frmMacroTools` と `modMacroToolsFormEntry` を作成または再作成します。フォームの初回導入・再展開はこのマクロを使います。
+- `OpenMacroToolsForm`: 作成済みのフォームを開きます。フォーム未導入の状態では使えません。
+- `CreateMacroConfigSheet`: `CONFIG` シートを作成または作り直します。フォームだけ使う場合は必須ではありません。
+- `RegenerateMacroSuiteSingleFileInstaller`: 開発者向けです。VBA プロジェクト内の本体モジュールから、配布用の `MacroSuiteSingleFileInstaller.bas` を再生成します。
+
+通常の利用者が最初に実行する順番は、`InstallMacroSuiteFromSingleFile`、`InstallMacroToolsUserForm`、`OpenMacroToolsForm` です。
+
+## フォーム初回導入手順
+
+初めてフォームを使えるようにする場合は、次の順番で作業します。
+
+1. 利用先の `.xlsm` を Excel で開きます。
+2. Excel の信頼設定で `VBA プロジェクト オブジェクト モデルへのアクセスを信頼する` を ON にします。
+3. `Alt + F11` で VBE を開きます。
+4. VBE の `ファイル > ファイルのインポート` から `MacroSuiteSingleFileInstaller.bas` をインポートします。
+5. Excel 側で `Alt + F8` を押します。
+6. マクロ一覧から `InstallMacroSuiteFromSingleFile` を選択して実行します。
+7. 完了メッセージが出たら、もう一度 `Alt + F8` を押します。
+8. マクロ一覧から `InstallMacroToolsUserForm` を選択して実行します。
+9. 完了メッセージが出たら、もう一度 `Alt + F8` を押します。
+10. マクロ一覧から `OpenMacroToolsForm` を選択して実行します。
+11. フォーム画面が表示されたら導入完了です。
+12. `.xlsm` を保存します。
+13. VBE の `Debug > Compile VBAProject` でコンパイル確認します。
+
+この通常手順では、UserForm の手動挿入も、フォーム名の手動変更も行いません。`InstallMacroToolsUserForm` が自動で `frmMacroTools` を作成します。
+
+VBE 側で確認したい場合は、次の状態になっていれば正常です。
+
+- 標準モジュールに `BetaEvidenceGenerator`、`BetaTestCaseGenerator`、`ConditionalBranchChecker`、`EscapePartsMarking`、`MacroToolsUserFormInstaller` がある。
+- フォームに `frmMacroTools` がある。
+- 標準モジュールに `modMacroToolsFormEntry` がある。
+
+`OpenMacroToolsForm` がマクロ一覧に出てこない場合は、まだ `InstallMacroToolsUserForm` が成功していません。先に `InstallMacroSuiteFromSingleFile`、次に `InstallMacroToolsUserForm` を実行してください。
+
+## フォーム再展開手順
+
+フォームの見た目、ラベル、入力欄、ボタン配置、フォーム連携処理を更新したい場合は、フォームを再展開します。
+
+1. 開いている `frmMacroTools` を閉じます。
+2. `InstallMacroToolsUserForm` を実行します。
+3. 完了メッセージを確認します。
+4. `OpenMacroToolsForm` を実行します。
+5. 表示内容が更新されていることを確認します。
+6. `.xlsm` を保存します。
+7. VBE の `Debug > Compile VBAProject` でコンパイル確認します。
+
+`InstallMacroToolsUserForm` は何度実行しても構いません。既存の `frmMacroTools` はレイアウトとコードが作り直され、既存の `modMacroToolsFormEntry` は削除して再作成されます。
+
+フォーム再展開で更新されるもの:
+
+- フォームのラベル文言
+- 入力欄、チェックボックス、ラジオボタン、ボタンの配置
+- フォームから各マクロを呼び出す処理
+- フォームを開くための `OpenMacroToolsForm`
+
+フォーム再展開だけでは更新されないもの:
+
+- `BetaEvidenceGenerator` などの本体モジュール
+- `CONFIG` シートの入力値
+- 既に作成済みのエビデンス、テストケース、マーキング済みブック
+
+本体マクロも更新したい場合は、次の「単一ファイル差し替え時の更新手順」を実行してください。
+
+## 単一ファイル差し替え時の更新手順
+
+新しい `MacroSuiteSingleFileInstaller.bas` を受け取った場合は、次の順で更新します。
+
+1. 開いている `frmMacroTools` を閉じます。
+2. VBE で既存の `MacroSuiteSingleFileInstaller` モジュールを削除します。
+3. VBE の `ファイル > ファイルのインポート` から新しい `MacroSuiteSingleFileInstaller.bas` をインポートします。
+4. `InstallMacroSuiteFromSingleFile` を実行します。
+5. フォームを使う場合は `InstallMacroToolsUserForm` を実行します。
+6. フォームを開く場合は `OpenMacroToolsForm` を実行します。
+7. CONFIG シートを使う場合は `CreateMacroConfigSheet` を実行します。
+8. `.xlsm` を保存します。
+9. VBE の `Debug > Compile VBAProject` でコンパイル確認します。
+
+`InstallMacroSuiteFromSingleFile` は展開先の同名モジュールを置き換えます。既存の UserForm や CONFIG シートは自動更新されないため、フォームを使う場合は必ず `InstallMacroToolsUserForm` を再実行してください。
+
+## CONFIG シート再作成手順
+
+CONFIG シートの項目、説明、ボタン配置を更新したい場合は、`CreateMacroConfigSheet` を再実行します。
+
+1. 必要であれば既存の `CONFIG` シートの入力値を控えます。
+2. `CreateMacroConfigSheet` を実行します。
+3. 作成された `CONFIG` シートの B 列に設定値を入力します。
+4. `.xlsm` を保存します。
+
+`CreateMacroConfigSheet` は CONFIG シートを作り直すため、既存の入力値を残したい場合は事前に退避してください。
 
 ## 単一ファイルの再生成
 
-開発側で各モジュールを編集した後、単一ファイルを作り直す場合は `RegenerateMacroSuiteSingleFileInstaller` を実行します。
+この手順は開発者向けです。利用者がフォームを使い始めるための作業ではありません。
+
+各本体モジュールを編集した後、配布用の単一ファイルを作り直す場合は `RegenerateMacroSuiteSingleFileInstaller` を実行します。
 
 - 出力先は `ThisWorkbook.Path\MacroSuiteSingleFileInstaller.bas` です。
 - 現在の VBA プロジェクト内にある 5 モジュールを元に、埋め込み済みの単一ファイルを再生成します。
+- 再生成後、その新しい `MacroSuiteSingleFileInstaller.bas` を利用者へ配布します。
 
 ## 利用方法の選択
 
@@ -63,12 +176,16 @@
 
 ## UserForm の使い方
 
-1. `InstallMacroToolsUserForm` を実行します。
-2. `OpenMacroToolsForm` を実行します。
-3. 必要な入力欄を埋めます。
-4. 各処理の実行ボタンを押します。
+初回導入または再展開が完了している場合は、次の手順でフォームを使います。
+
+1. `OpenMacroToolsForm` を実行します。
+2. 必要な入力欄を埋めます。
+3. 各処理の実行ボタンを押します。
+4. 作業が終わったらフォーム右上の `×` で閉じます。
 
 フォームはモデルレス表示です。フォームを開いたまま、同じ Excel インスタンス内のブックやシートを操作できます。
+
+フォームの表示内容が古い場合は、フォームを閉じてから `InstallMacroToolsUserForm` を実行し直してください。
 
 ## CONFIG シートの使い方
 
@@ -275,6 +392,22 @@ pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum
 
 ## よくあるエラーと対処
 
+### `OpenMacroToolsForm` が見つからない
+
+`InstallMacroToolsUserForm` がまだ成功していない可能性があります。先に `InstallMacroSuiteFromSingleFile`、次に `InstallMacroToolsUserForm` を実行してください。
+
+### `InstallMacroToolsUserForm` が見つからない
+
+本体モジュールの展開が完了していない可能性があります。`MacroSuiteSingleFileInstaller.bas` をインポートしただけではフォーム作成マクロはまだ使えません。`InstallMacroSuiteFromSingleFile` を実行してください。
+
+### フォームのラベルや配置が古い
+
+古い `frmMacroTools` が残っています。フォームを閉じてから `InstallMacroToolsUserForm` を再実行し、その後 `OpenMacroToolsForm` で開き直してください。
+
+### フォームを閉じられない、または再展開できない
+
+フォームが開いたまま再展開しようとしている可能性があります。フォーム右上の `×` で閉じてから `InstallMacroToolsUserForm` を実行してください。閉じられない場合は、作業中のブックを保存して Excel を開き直してから再実行してください。
+
 ### `1004` エラー
 
 `VBA プロジェクト オブジェクト モデルへのアクセスを信頼する` が OFF の可能性があります。トラストセンターの設定を確認してください。
@@ -287,9 +420,13 @@ pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum
 
 古いフォームや古いモジュールが残っている可能性があります。`InstallMacroSuiteFromSingleFile` と `InstallMacroToolsUserForm` を再実行してください。
 
+### `UserForm component could not be created` と表示される
+
+通常は UserForm の手動挿入は不要です。このエラーが出た場合だけ、環境によって UserForm の自動追加がブロックされている可能性があります。例外対応として、VBE で `挿入 > ユーザーフォーム` から UserForm を 1 つ手動追加し、プロパティウィンドウの `(Name)` を `frmMacroTools` に変更してから、`InstallMacroToolsUserForm` を再実行してください。
+
 ### コンパイルエラー
 
-古いモジュールが残っている可能性があります。単一ファイルを再インポートし、`InstallMacroSuiteFromSingleFile` を実行してからコンパイルしてください。
+古いモジュールが残っている可能性があります。単一ファイルを再インポートし、`InstallMacroSuiteFromSingleFile`、`InstallMacroToolsUserForm` の順に実行してからコンパイルしてください。
 
 ## 運用メモ
 
