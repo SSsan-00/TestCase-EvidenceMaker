@@ -68,7 +68,7 @@ End Sub
 ' xlsmツール（別ファイル）から、選択した xlsx を開いて加工するマクロ
 ' - シート名に "A1-1-1" を含むシートのみを対象に処理する
 ' - A列のみ入力（B列空）の行はオプション値（None/Left/Right/Both）に応じて塗りつぶす
-' - B列の "sqlX(...)" 部分だけを赤字＋太字（複数ヒット対応）
+' - B列の "sqlX(...)" 部分だけを赤字＋太字（複数ヒット、複数行跨ぎ対応）
 ' - ただし "DbHelper.sqlX(...)" のようなクラス/インスタンス経由の呼び出しは
 '   "DbHelper." も含めて赤字＋太字にする
 ' - ヒットした行の C列に固定メッセージ（既定: "SQLインジェクション対策済み"）を赤字で書く
@@ -159,7 +159,7 @@ End Sub
 '============================================================
 ' 1シート分処理:
 ' - A列のみ入力（B列空）の行はオプション値（None/Left/Right/Both）に応じて塗りつぶす
-' - B列を走査して sqlX(...) / DbHelper.sqlX(...) を装飾
+' - B列を走査して sqlX(...) / DbHelper.sqlX(...) を装飾（複数行跨ぎ対応）
 ' - ヒット行のC列に固定メッセージ＆赤字
 '============================================================
 Private Sub ProcessOneSheet(ByVal ws As Worksheet, ByVal prefixes As Collection, ByVal hitMessage As String)
@@ -185,23 +185,157 @@ Private Sub ProcessOneSheet(ByVal ws As Worksheet, ByVal prefixes As Collection,
         If ShouldFillOnlyAValueRow(ws, r) Then
             ApplyOnlyAValueRowFill ws, r, onlyAFillColor, fillTargetOption
         End If
+    Next r
 
-        Dim cell As Range
-        Set cell = ws.Cells(r, "B")
+    MarkSqlPartsInRows ws, prefixes, hitMessage, 4, lastRow
+End Sub
 
-        If Len(cell.Value2) > 0 Then
-            Dim hit As Boolean
-            hit = MarkSqlPartsInCell(cell, prefixes)
+Private Sub MarkSqlPartsInRows( _
+    ByVal ws As Worksheet, _
+    ByVal prefixes As Collection, _
+    ByVal hitMessage As String, _
+    ByVal firstRow As Long, _
+    ByVal lastRow As Long)
 
-            If hit Then
-                Dim eCell As Range
-                Set eCell = ws.Cells(r, "C")
-                eCell.Value2 = hitMessage
-                eCell.Font.Color = vbRed
+    Dim rowCount As Long
+    rowCount = lastRow - firstRow + 1
+    If rowCount <= 0 Then Exit Sub
+
+    Dim rowTexts() As String
+    Dim rowStartPositions() As Long
+    ReDim rowTexts(1 To rowCount)
+    ReDim rowStartPositions(1 To rowCount)
+
+    Dim virtualText As String
+    Dim rowIndex As Long
+    Dim rowNumber As Long
+
+    For rowIndex = 1 To rowCount
+        rowNumber = firstRow + rowIndex - 1
+        rowTexts(rowIndex) = CStr(ws.Cells(rowNumber, "B").Value2)
+        rowStartPositions(rowIndex) = Len(virtualText) + 1
+        virtualText = virtualText & rowTexts(rowIndex)
+        If rowIndex < rowCount Then virtualText = virtualText & vbLf
+    Next rowIndex
+
+    If InStr(1, virtualText, "(", vbBinaryCompare) = 0 Then Exit Sub
+
+    Dim prefixIndex As Long
+    Dim prefix As String
+
+    For prefixIndex = 1 To prefixes.Count
+        prefix = CStr(prefixes(prefixIndex))
+        MarkAllOccurrencesForOnePrefixAcrossRows ws, virtualText, rowTexts, rowStartPositions, firstRow, prefix, hitMessage
+    Next prefixIndex
+End Sub
+
+Private Function MarkAllOccurrencesForOnePrefixAcrossRows( _
+    ByVal ws As Worksheet, _
+    ByVal virtualText As String, _
+    ByRef rowTexts() As String, _
+    ByRef rowStartPositions() As Long, _
+    ByVal firstRow As Long, _
+    ByVal prefix As String, _
+    ByVal hitMessage As String) As Boolean
+
+    Dim pattern As String
+    pattern = prefix & "("
+
+    Dim searchStartPos As Long
+    searchStartPos = 1
+
+    Dim hit As Boolean
+    hit = False
+
+    Do
+        Dim prefixPos As Long
+        prefixPos = InStr(searchStartPos, virtualText, pattern, vbTextCompare)
+        If prefixPos = 0 Then Exit Do
+
+        Dim openParenPos As Long
+        openParenPos = prefixPos + Len(prefix)
+
+        Dim closePos As Long
+        closePos = FindMatchingClosingParen(virtualText, openParenPos)
+
+        If closePos > 0 Then
+            Dim formatStartPos As Long
+            formatStartPos = ResolveFormatStartPosition(virtualText, prefixPos)
+
+            ApplyFormattedVirtualRange ws, rowTexts, rowStartPositions, firstRow, formatStartPos, closePos, hitMessage
+
+            hit = True
+            searchStartPos = closePos + 1
+        Else
+            searchStartPos = prefixPos + 1
+        End If
+    Loop
+
+    MarkAllOccurrencesForOnePrefixAcrossRows = hit
+End Function
+
+Private Sub ApplyFormattedVirtualRange( _
+    ByVal ws As Worksheet, _
+    ByRef rowTexts() As String, _
+    ByRef rowStartPositions() As Long, _
+    ByVal firstRow As Long, _
+    ByVal formatStartPos As Long, _
+    ByVal formatEndPos As Long, _
+    ByVal hitMessage As String)
+
+    Dim rowIndex As Long
+    Dim rowNumber As Long
+    Dim rowTextLength As Long
+    Dim rowStartPos As Long
+    Dim rowEndPos As Long
+    Dim segmentStartPos As Long
+    Dim segmentEndPos As Long
+    Dim localStartPos As Long
+    Dim segmentLength As Long
+
+    For rowIndex = LBound(rowTexts) To UBound(rowTexts)
+        rowTextLength = Len(rowTexts(rowIndex))
+        If rowTextLength > 0 Then
+            rowStartPos = rowStartPositions(rowIndex)
+            rowEndPos = rowStartPos + rowTextLength - 1
+
+            segmentStartPos = MaxLong(formatStartPos, rowStartPos)
+            segmentEndPos = MinLong(formatEndPos, rowEndPos)
+
+            If segmentStartPos <= segmentEndPos Then
+                rowNumber = firstRow + rowIndex - 1
+                localStartPos = segmentStartPos - rowStartPos + 1
+                segmentLength = segmentEndPos - segmentStartPos + 1
+
+                With ws.Cells(rowNumber, "B").Characters(localStartPos, segmentLength).Font
+                    .Color = vbRed
+                    .Bold = True
+                End With
+
+                With ws.Cells(rowNumber, "C")
+                    .Value2 = hitMessage
+                    .Font.Color = vbRed
+                End With
             End If
         End If
-    Next r
+    Next rowIndex
 End Sub
+
+Private Function MaxLong(ByVal leftValue As Long, ByVal rightValue As Long) As Long
+    If leftValue >= rightValue Then
+        MaxLong = leftValue
+    Else
+        MaxLong = rightValue
+    End If
+End Function
+
+Private Function MinLong(ByVal leftValue As Long, ByVal rightValue As Long) As Long
+    If leftValue <= rightValue Then
+        MinLong = leftValue
+    Else
+        MinLong = rightValue
+    End If
+End Function
 
 Private Function ShouldFillOnlyAValueRow(ByVal ws As Worksheet, ByVal rowNumber As Long) As Boolean
     Dim valueA As Variant
@@ -306,102 +440,6 @@ ParseError:
     HexColorTextToColorLongOrDefault = defaultColor
 End Function
 
-'============================================================
-' セル内の複数パターンをすべて装飾する
-' - prefix + "(" の開始位置を探す
-' - 直前が "." の場合は、左側の識別子（例: DbHelper）も含める
-' - そこから対応する ")" までを赤字＋太字（ネスト括弧を考慮）
-' - 同一セル内に複数存在してもすべて処理
-'
-' 戻り値:
-'   True  = 1つ以上ヒットして装飾した
-'   False = ヒットなし
-'============================================================
-Private Function MarkSqlPartsInCell(ByVal cell As Range, ByVal prefixes As Collection) As Boolean
-    Dim text As String
-    Dim anyHit As Boolean
-    Dim i As Long
-    Dim prefix As String
-    Dim prefixCount As Long
-
-    text = CStr(cell.Value2)
-
-    ' 開き括弧が無い文字列は prefix(...) パターンを含まない
-    If InStr(1, text, "(", vbBinaryCompare) = 0 Then Exit Function
-
-    anyHit = False
-    prefixCount = prefixes.Count
-
-    For i = 1 To prefixCount
-        prefix = CStr(prefixes(i))
-        anyHit = MarkAllOccurrencesForOnePrefix(cell, text, prefix) Or anyHit
-    Next i
-
-    MarkSqlPartsInCell = anyHit
-End Function
-
-'============================================================
-' 1つの prefix について、セル内の全出現箇所を装飾する
-' - 例: prefix="sqlS" なら "sqlS(" をすべて探す
-' - 見つけたら対応する ")" を探す（ネスト括弧を考慮）
-' - 直前が "." の場合は、左側の識別子も装飾範囲に含める
-'   例: "DbHelper.sqlS(...)" → "DbHelper.sqlS(...)" 全体を装飾
-' - 同じセル内に複数あっても全部処理する
-'============================================================
-Private Function MarkAllOccurrencesForOnePrefix(ByVal cell As Range, ByVal text As String, ByVal prefix As String) As Boolean
-    Dim pattern As String
-    pattern = prefix & "("
-
-    Dim searchStartPos As Long
-    searchStartPos = 1
-
-    Dim hit As Boolean
-    hit = False
-
-    Do
-        Dim prefixPos As Long
-        prefixPos = InStr(searchStartPos, text, pattern, vbTextCompare)
-        If prefixPos = 0 Then Exit Do
-
-        Dim openParenPos As Long
-        openParenPos = prefixPos + Len(prefix)
-
-        Dim closePos As Long
-        closePos = FindMatchingClosingParen(text, openParenPos)
-
-        If closePos > 0 Then
-            '----------------------------------------------------
-            ' 装飾開始位置を決める
-            '
-            ' 通常:
-            '   sqlS(...)
-            '   ↑ ここから装飾
-            '
-            ' クラス/インスタンス経由:
-            '   DbHelper.sqlS(...)
-            '   ↑ ここから装飾
-            '----------------------------------------------------
-            Dim formatStartPos As Long
-            formatStartPos = ResolveFormatStartPosition(text, prefixPos)
-
-            Dim lengthToFormat As Long
-            lengthToFormat = (closePos - formatStartPos) + 1
-
-            With cell.Characters(formatStartPos, lengthToFormat).Font
-                .Color = vbRed
-                .Bold = True
-            End With
-
-            hit = True
-            searchStartPos = closePos + 1
-        Else
-            ' 閉じ括弧が無い異常/未完成パターンは、少し進めて次を探す
-            searchStartPos = prefixPos + 1
-        End If
-    Loop
-
-    MarkAllOccurrencesForOnePrefix = hit
-End Function
 
 '============================================================
 ' 開き括弧に対応する閉じ括弧を探す
