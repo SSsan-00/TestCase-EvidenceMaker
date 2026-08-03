@@ -212,7 +212,7 @@ Private Sub MarkSqlPartsInRows( _
 
     For rowIndex = 1 To rowCount
         rowNumber = firstRow + rowIndex - 1
-        rowTexts(rowIndex) = CStr(ws.Cells(rowNumber, "B").Value2)
+        rowTexts(rowIndex) = GetMarkingCellText(ws.Cells(rowNumber, "B").Value2)
         rowStartPositions(rowIndex) = Len(virtualText) + 1
         virtualText = virtualText & rowTexts(rowIndex)
         If rowIndex < rowCount Then virtualText = virtualText & vbLf
@@ -220,18 +220,115 @@ Private Sub MarkSqlPartsInRows( _
 
     If InStr(1, virtualText, "(", vbBinaryCompare) = 0 Then Exit Sub
 
+    Dim executableCodePositions() As Boolean
+    BuildExecutableCodePositionMap virtualText, executableCodePositions
+
     Dim prefixIndex As Long
     Dim prefix As String
 
     For prefixIndex = 1 To prefixes.Count
         prefix = CStr(prefixes(prefixIndex))
-        MarkAllOccurrencesForOnePrefixAcrossRows ws, virtualText, rowTexts, rowStartPositions, firstRow, prefix, hitMessage
+        MarkAllOccurrencesForOnePrefixAcrossRows ws, virtualText, executableCodePositions, rowTexts, rowStartPositions, firstRow, prefix, hitMessage
     Next prefixIndex
 End Sub
+
+Private Function GetMarkingCellText(ByVal value As Variant) As String
+    If IsError(value) Then Exit Function
+    If IsNull(value) Then Exit Function
+    If IsEmpty(value) Then Exit Function
+
+    GetMarkingCellText = CStr(value)
+End Function
+
+Private Sub BuildExecutableCodePositionMap( _
+    ByVal text As String, _
+    ByRef executableCodePositions() As Boolean)
+
+    ReDim executableCodePositions(1 To Len(text))
+
+    Dim scanPos As Long
+    Dim ch As String
+    Dim nextCh As String
+    Dim quoteChar As String
+    Dim inQuote As Boolean
+    Dim inLineComment As Boolean
+    Dim inBlockComment As Boolean
+
+    scanPos = 1
+
+    Do While scanPos <= Len(text)
+        ch = Mid$(text, scanPos, 1)
+        nextCh = vbNullString
+        If scanPos < Len(text) Then nextCh = Mid$(text, scanPos + 1, 1)
+
+        If inLineComment Then
+            If ch = vbCr Or ch = vbLf Then inLineComment = False
+            scanPos = scanPos + 1
+        ElseIf inBlockComment Then
+            If ch = "*" And nextCh = "/" Then
+                inBlockComment = False
+                scanPos = scanPos + 2
+            Else
+                scanPos = scanPos + 1
+            End If
+        ElseIf inQuote Then
+            If ch = "\" Then
+                scanPos = scanPos + 1
+                If scanPos <= Len(text) Then scanPos = scanPos + 1
+            ElseIf ch = quoteChar Then
+                If nextCh = quoteChar Then
+                    scanPos = scanPos + 2
+                Else
+                    inQuote = False
+                    quoteChar = vbNullString
+                    scanPos = scanPos + 1
+                End If
+            Else
+                scanPos = scanPos + 1
+            End If
+        ElseIf ch = """" Or ch = "'" Then
+            inQuote = True
+            quoteChar = ch
+            scanPos = scanPos + 1
+        ElseIf ch = "/" And nextCh = "/" Then
+            inLineComment = True
+            scanPos = scanPos + 2
+        ElseIf ch = "#" Then
+            inLineComment = True
+            scanPos = scanPos + 1
+        ElseIf ch = "/" And nextCh = "*" Then
+            inBlockComment = True
+            scanPos = scanPos + 2
+        Else
+            executableCodePositions(scanPos) = True
+            scanPos = scanPos + 1
+        End If
+    Loop
+End Sub
+
+Private Function IsFunctionPrefixCandidate( _
+    ByVal text As String, _
+    ByRef executableCodePositions() As Boolean, _
+    ByVal prefixPos As Long) As Boolean
+
+    If prefixPos < LBound(executableCodePositions) Then Exit Function
+    If prefixPos > UBound(executableCodePositions) Then Exit Function
+    If Not executableCodePositions(prefixPos) Then Exit Function
+
+    If prefixPos > 1 Then
+        Dim previousChar As String
+        previousChar = Mid$(text, prefixPos - 1, 1)
+
+        If IsIdentifierChar(previousChar) Or previousChar = "$" Then Exit Function
+    End If
+
+    IsFunctionPrefixCandidate = True
+End Function
 
 Private Function MarkAllOccurrencesForOnePrefixAcrossRows( _
     ByVal ws As Worksheet, _
     ByVal virtualText As String, _
+    ByRef executableCodePositions() As Boolean, _
     ByRef rowTexts() As String, _
     ByRef rowStartPositions() As Long, _
     ByVal firstRow As Long, _
@@ -252,20 +349,24 @@ Private Function MarkAllOccurrencesForOnePrefixAcrossRows( _
         prefixPos = InStr(searchStartPos, virtualText, pattern, vbTextCompare)
         If prefixPos = 0 Then Exit Do
 
-        Dim openParenPos As Long
-        openParenPos = prefixPos + Len(prefix)
+        If IsFunctionPrefixCandidate(virtualText, executableCodePositions, prefixPos) Then
+            Dim openParenPos As Long
+            openParenPos = prefixPos + Len(prefix)
 
-        Dim closePos As Long
-        closePos = FindMatchingClosingParen(virtualText, openParenPos)
+            Dim closePos As Long
+            closePos = FindMatchingClosingParen(virtualText, executableCodePositions, openParenPos)
 
-        If closePos > 0 Then
-            Dim formatStartPos As Long
-            formatStartPos = ResolveFormatStartPosition(virtualText, prefixPos)
+            If closePos > 0 Then
+                Dim formatStartPos As Long
+                formatStartPos = ResolveFormatStartPosition(virtualText, prefixPos)
 
-            ApplyFormattedVirtualRange ws, rowTexts, rowStartPositions, firstRow, formatStartPos, closePos, hitMessage
+                ApplyFormattedVirtualRange ws, rowTexts, rowStartPositions, firstRow, formatStartPos, closePos, hitMessage
 
-            hit = True
-            searchStartPos = closePos + 1
+                hit = True
+                searchStartPos = closePos + 1
+            Else
+                searchStartPos = prefixPos + 1
+            End If
         Else
             searchStartPos = prefixPos + 1
         End If
@@ -444,42 +545,28 @@ End Function
 '============================================================
 ' 開き括弧に対応する閉じ括弧を探す
 ' - sqlS(xxx + trim(yyy) + "zzz") のようなネスト括弧に対応する
-' - シングルクォート/ダブルクォート内の括弧は無視する
-' - バックスラッシュエスケープと、同じ引用符を2つ重ねるエスケープを考慮する
+' - 文字列やコメント内の括弧はコード位置マップで無視する
 '============================================================
-Private Function FindMatchingClosingParen(ByVal text As String, ByVal openParenPos As Long) As Long
+Private Function FindMatchingClosingParen( _
+    ByVal text As String, _
+    ByRef executableCodePositions() As Boolean, _
+    ByVal openParenPos As Long) As Long
+
     If openParenPos < 1 Or openParenPos > Len(text) Then Exit Function
     If Mid$(text, openParenPos, 1) <> "(" Then Exit Function
+    If Not executableCodePositions(openParenPos) Then Exit Function
 
     Dim depth As Long
     Dim scanPos As Long
     Dim ch As String
-    Dim quoteChar As String
-    Dim inQuote As Boolean
 
     depth = 0
-    inQuote = False
-    quoteChar = vbNullString
 
     For scanPos = openParenPos To Len(text)
-        ch = Mid$(text, scanPos, 1)
+        If executableCodePositions(scanPos) Then
+            ch = Mid$(text, scanPos, 1)
 
-        If inQuote Then
-            If ch = quoteChar Then
-                If scanPos < Len(text) And Mid$(text, scanPos + 1, 1) = quoteChar Then
-                    scanPos = scanPos + 1
-                Else
-                    inQuote = False
-                    quoteChar = vbNullString
-                End If
-            ElseIf ch = "\" Then
-                If scanPos < Len(text) Then scanPos = scanPos + 1
-            End If
-        Else
-            If ch = """" Or ch = "'" Then
-                inQuote = True
-                quoteChar = ch
-            ElseIf ch = "(" Then
+            If ch = "(" Then
                 depth = depth + 1
             ElseIf ch = ")" Then
                 depth = depth - 1

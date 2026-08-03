@@ -40,6 +40,30 @@ function Assert-CellFullyRedBold($cell, [string]$address) {
     Assert-Equal 255 $color "$address should be red."
 }
 
+function Assert-CharactersRedBold($cell, [int]$start, [int]$length, [string]$label) {
+    $font = $cell.Characters($start, $length).Font
+    Assert-True ([bool]$font.Bold) "$label should be bold."
+    Assert-Equal 255 ([int]$font.Color) "$label should be red."
+}
+
+function Assert-CharacterUnmarked($cell, [int]$position, [string]$label) {
+    $font = $cell.Characters($position, 1).Font
+    $isMarked = ([bool]$font.Bold) -and ([int]$font.Color -eq 255)
+    Assert-True (-not $isMarked) "$label should not be marked."
+}
+
+function Assert-CellNotHit($sheet, [string]$sourceAddress, [string]$messageAddress) {
+    $sourceCell = $sheet.Range($sourceAddress)
+    $sourceLength = Get-CellTextLength $sourceCell
+    if ($sourceLength -gt 0) {
+        for ($position = 1; $position -le $sourceLength; $position++) {
+            Assert-CharacterUnmarked $sourceCell $position "$sourceAddress character $position"
+        }
+    }
+
+    Assert-Equal '' ([string]$sheet.Range($messageAddress).Value2) "$messageAddress should remain empty."
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 if ([string]::IsNullOrWhiteSpace($ModulePath)) {
     $candidates = @(
@@ -141,6 +165,30 @@ try {
 
     $ws.Range('B8').Value2 = 'sqlS(xxx + trim(yyy) + "zzz")'
 
+    $ws.Range('B10').Value2 = 'mySqlS(value)'
+    $ws.Range('B11').Value2 = 'message = "sqlS(value)"'
+    $ws.Range('B12').Value2 = '// sqlS(value)'
+    $ws.Range('B13').Value2 = '# sqlS(value)'
+    $ws.Range('B14').Value2 = '/* sqlS(value)'
+    $ws.Range('B15').Value2 = 'still a comment */'
+
+    $ws.Range('B17').Value2 = 'sqlS('
+    $ws.Range('B18').Value2 = 'value // ) ignored'
+    $ws.Range('B19').Value2 = ')'
+
+    $ws.Range('B21').Value2 = 'before sqlS(value) after'
+
+    $ws.Range('B23').Value2 = 'DbHelper.sqlS('
+    $ws.Range('B24').Value2 = 'trim(value)'
+    $ws.Range('B25').Value2 = ')'
+
+    $ws.Range('B27').Formula = '=NA()'
+    $ws.Range('B27').Calculate()
+    $ws.Range('B28').Value2 = 'sqlS(afterError)'
+
+    $ws.Range('B30').Value2 = 'sqlS(one) + sqlS(two)'
+    $ws.Range('B32').Value2 = 'sqlS(")")'
+
     $targetWb.SaveAs($targetWorkbookPath, 51)
     $targetWb.Close($false)
     Release-ComObject $targetWb
@@ -165,6 +213,41 @@ try {
 
     Assert-CellFullyRedBold $verifyWs.Range('B8') 'B8'
     Assert-Equal 'HIT' ([string]$verifyWs.Range('C8').Value2) 'C8 hit message mismatch.'
+
+    Assert-CellNotHit $verifyWs 'B10' 'C10'
+    Assert-CellNotHit $verifyWs 'B11' 'C11'
+    Assert-CellNotHit $verifyWs 'B12' 'C12'
+    Assert-CellNotHit $verifyWs 'B13' 'C13'
+    Assert-CellNotHit $verifyWs 'B14' 'C14'
+    Assert-CellNotHit $verifyWs 'B15' 'C15'
+
+    Assert-CellFullyRedBold $verifyWs.Range('B17') 'B17'
+    Assert-CellFullyRedBold $verifyWs.Range('B18') 'B18'
+    Assert-CellFullyRedBold $verifyWs.Range('B19') 'B19'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C17').Value2) 'C17 hit message mismatch.'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C18').Value2) 'C18 hit message mismatch.'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C19').Value2) 'C19 hit message mismatch.'
+
+    Assert-CharacterUnmarked $verifyWs.Range('B21') 1 'B21 leading text'
+    Assert-CharactersRedBold $verifyWs.Range('B21') 8 11 'B21 function call'
+    Assert-CharacterUnmarked $verifyWs.Range('B21') 20 'B21 trailing text'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C21').Value2) 'C21 hit message mismatch.'
+
+    Assert-CellFullyRedBold $verifyWs.Range('B23') 'B23'
+    Assert-CellFullyRedBold $verifyWs.Range('B24') 'B24'
+    Assert-CellFullyRedBold $verifyWs.Range('B25') 'B25'
+
+    Assert-Equal '' ([string]$verifyWs.Range('C27').Value2) 'C27 should remain empty.'
+    Assert-CellFullyRedBold $verifyWs.Range('B28') 'B28'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C28').Value2) 'C28 hit message mismatch.'
+
+    Assert-CharactersRedBold $verifyWs.Range('B30') 1 9 'B30 first function call'
+    Assert-CharacterUnmarked $verifyWs.Range('B30') 11 'B30 operator'
+    Assert-CharactersRedBold $verifyWs.Range('B30') 13 9 'B30 second function call'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C30').Value2) 'C30 hit message mismatch.'
+
+    Assert-CellFullyRedBold $verifyWs.Range('B32') 'B32'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C32').Value2) 'C32 hit message mismatch.'
 
     Write-TestLog 'All EscapePartsMarking tests passed.'
 }
