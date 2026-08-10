@@ -21,7 +21,7 @@ Private Const SYMBOL_EMPTY As String = "□"
 Private Const SHEET_KEY_CURRENT_SOURCE As String = "現行ソース"
 Private Const SHEET_KEY_INDIVIDUAL_PREFIX As String = "【個別】"
 Private Const TEMPLATE_SNAPSHOT_SHEET_PREFIX As String = "__TMPROW15_"
-Private Const LEADING_FUNCTION_STARTS_FROM_B1 As Boolean = True  ' True: 最初の判定対象がfunctionならB1開始にする
+Private Const WRITE_INDIVIDUAL_SHEET_ENABLED As Boolean = True  ' True: 個別シートへ解析結果を書き込む / False: 現行ソースのマーキングのみ行う
 Private Const MARK_NON_FUNCTION_LINE_WITH_DASH As Boolean = True  ' True: function以外の対象行へ B{n}- を書き込む / False: function行だけ B{n} を書き込む
 Private Const MARK_FILL_ENABLED As Boolean = False  ' True: マーキング対象のB列セルを塗りつぶす / False: 塗りつぶさない
 Private Const MARK_FILL_COLOR_HEX As String = "#FFF2CC"  ' 塗りつぶし色（#RRGGBB / 0xRRGGBB）
@@ -29,8 +29,8 @@ Public Type ConditionalBranchCheckerUiOptions
     Enabled As Boolean
     featureName As String
     workbookPath As String
-    OverrideLeadingFunctionStartsFromB1 As Boolean
-    leadingFunctionStartsFromB1 As Boolean
+    OverrideWriteIndividualSheetEnabled As Boolean
+    writeIndividualSheetEnabled As Boolean
     OverrideMarkNonFunctionLineWithDash As Boolean
     markNonFunctionLineWithDash As Boolean
     OverrideMarkFillEnabled As Boolean
@@ -59,8 +59,8 @@ Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalB
     defaults.Enabled = True
     defaults.featureName = vbNullString
     defaults.workbookPath = vbNullString
-    defaults.OverrideLeadingFunctionStartsFromB1 = True
-    defaults.leadingFunctionStartsFromB1 = LEADING_FUNCTION_STARTS_FROM_B1
+    defaults.OverrideWriteIndividualSheetEnabled = True
+    defaults.writeIndividualSheetEnabled = WRITE_INDIVIDUAL_SHEET_ENABLED
     defaults.OverrideMarkNonFunctionLineWithDash = True
     defaults.markNonFunctionLineWithDash = MARK_NON_FUNCTION_LINE_WITH_DASH
     defaults.OverrideMarkFillEnabled = True
@@ -75,8 +75,8 @@ Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.featureName = vbNullString
     mUiOptions.workbookPath = vbNullString
-    mUiOptions.OverrideLeadingFunctionStartsFromB1 = False
-    mUiOptions.leadingFunctionStartsFromB1 = False
+    mUiOptions.OverrideWriteIndividualSheetEnabled = False
+    mUiOptions.writeIndividualSheetEnabled = False
     mUiOptions.OverrideMarkNonFunctionLineWithDash = False
     mUiOptions.markNonFunctionLineWithDash = False
     mUiOptions.OverrideMarkFillEnabled = False
@@ -99,6 +99,7 @@ Public Sub RunMain()
     Dim sourceTextValues As Variant
     Dim sourceLastRow As Long
     Dim useLeadingFunctionB1 As Boolean
+    Dim writeIndividualSheetEnabled As Boolean
 
     ' 1) 機能名を入力
     featureName = PromptFeatureName()
@@ -129,7 +130,10 @@ Public Sub RunMain()
         Exit Sub
     End If
 
-    Set individualSheet = FindIndividualSheet(targetWorkbook, featureName)
+    writeIndividualSheetEnabled = IsWriteIndividualSheetEnabled()
+    If writeIndividualSheetEnabled Then
+        Set individualSheet = FindIndividualSheet(targetWorkbook, featureName)
+    End If
 
     sourceLastRow = GetLastRow(currentSourceSheet, SOURCE_TEXT_COL)
     sourceTextValues = ReadColumnValues(currentSourceSheet, SOURCE_TEXT_COL, 1, sourceLastRow)
@@ -138,8 +142,10 @@ Public Sub RunMain()
     ' 5) 現行ソースシートに対してマーキング
     MarkCurrentSourceSheet currentSourceSheet, sourceTextValues, sourceLastRow, markedCount, useLeadingFunctionB1
 
-    ' 6) 個別シートがある場合は解析結果を書き込む
-    If Not individualSheet Is Nothing Then
+    ' 6) オプションONかつ個別シートがある場合だけ解析結果を書き込む
+    If Not writeIndividualSheetEnabled Then
+        resultMessage = "個別シート出力: スキップ（設定OFF）"
+    ElseIf Not individualSheet Is Nothing Then
         Set syntaxEvents = CollectSyntaxEvents(sourceTextValues, sourceLastRow)
         WriteIndividualSheet individualSheet, syntaxEvents, useLeadingFunctionB1
         resultMessage = "個別シート出力: 実施（" & individualSheet.Name & "）"
@@ -406,11 +412,11 @@ Private Function FindIndividualSheet(ByVal targetWorkbook As Workbook, ByVal fea
     Next ws
 End Function
 
-Private Function IsLeadingFunctionStartsFromB1Enabled() As Boolean
-    If mUiOptions.Enabled And mUiOptions.OverrideLeadingFunctionStartsFromB1 Then
-        IsLeadingFunctionStartsFromB1Enabled = mUiOptions.leadingFunctionStartsFromB1
+Private Function IsWriteIndividualSheetEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideWriteIndividualSheetEnabled Then
+        IsWriteIndividualSheetEnabled = mUiOptions.writeIndividualSheetEnabled
     Else
-        IsLeadingFunctionStartsFromB1Enabled = LEADING_FUNCTION_STARTS_FROM_B1
+        IsWriteIndividualSheetEnabled = WRITE_INDIVIDUAL_SHEET_ENABLED
     End If
 End Function
 
@@ -560,8 +566,6 @@ Private Function ShouldStartFunctionSectionFromB1( _
     ' 最初の判定対象構文がfunctionなら、先頭セクションをB1から開始する
     Dim rowIndex As Long
     Dim lineText As String
-
-    If Not IsLeadingFunctionStartsFromB1Enabled() Then Exit Function
 
     For rowIndex = 1 To lastRow
         lineText = GetCellTextFromValue(sourceTextValues(rowIndex, 1))
