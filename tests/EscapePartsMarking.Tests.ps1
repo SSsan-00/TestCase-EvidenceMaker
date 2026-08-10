@@ -119,7 +119,7 @@ Public Sub RunEscapePartsMarkingForTest(ByVal targetPath As String)
     options.UseEscapeTargetPrefixesCsv = True
     options.escapeTargetPrefixesCsv = "sqlS"
     options.UseOnlyAValueRowFillTarget = True
-    options.onlyAValueRowFillTarget = "None"
+    options.onlyAValueRowFillTarget = "Both"
     options.UseOnlyAValueRowFillColorHex = True
     options.onlyAValueRowFillColorHex = "#a6a6a6"
 
@@ -189,6 +189,8 @@ try {
     $ws.Range('B30').Value2 = 'sqlS(one) + sqlS(two)'
     $ws.Range('B32').Value2 = 'sqlS(")")'
 
+    $ws.Range('A34').Value2 = 'ONLY_A'
+
     $targetWb.SaveAs($targetWorkbookPath, 51)
     $targetWb.Close($false)
     Release-ComObject $targetWb
@@ -248,6 +250,9 @@ try {
 
     Assert-CellFullyRedBold $verifyWs.Range('B32') 'B32'
     Assert-Equal 'HIT' ([string]$verifyWs.Range('C32').Value2) 'C32 hit message mismatch.'
+
+    Assert-Equal 10921638 ([int]$verifyWs.Range('A34').Interior.Color) 'A34 fill color mismatch.'
+    Assert-Equal 10921638 ([int]$verifyWs.Range('B34').Interior.Color) 'B34 fill color mismatch.'
 
     Write-TestLog 'All EscapePartsMarking tests passed.'
 }

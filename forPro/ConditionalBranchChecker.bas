@@ -98,7 +98,7 @@ Public Sub RunMain()
     Dim resultMessage As String
     Dim sourceTextValues As Variant
     Dim sourceLastRow As Long
-    Dim useLeadingFunctionB1 As Boolean
+    Dim firstTargetIsFunction As Boolean
     Dim writeIndividualSheetEnabled As Boolean
 
     ' 1) 機能名を入力
@@ -137,17 +137,17 @@ Public Sub RunMain()
 
     sourceLastRow = GetLastRow(currentSourceSheet, SOURCE_TEXT_COL)
     sourceTextValues = ReadColumnValues(currentSourceSheet, SOURCE_TEXT_COL, 1, sourceLastRow)
-    useLeadingFunctionB1 = ShouldStartFunctionSectionFromB1(sourceTextValues, sourceLastRow)
+    firstTargetIsFunction = IsFirstMarkTargetFunction(sourceTextValues, sourceLastRow)
 
     ' 5) 現行ソースシートに対してマーキング
-    MarkCurrentSourceSheet currentSourceSheet, sourceTextValues, sourceLastRow, markedCount, useLeadingFunctionB1
+    MarkCurrentSourceSheet currentSourceSheet, sourceTextValues, sourceLastRow, markedCount, firstTargetIsFunction
 
     ' 6) オプションONかつ個別シートがある場合だけ解析結果を書き込む
     If Not writeIndividualSheetEnabled Then
         resultMessage = "個別シート出力: スキップ（設定OFF）"
     ElseIf Not individualSheet Is Nothing Then
         Set syntaxEvents = CollectSyntaxEvents(sourceTextValues, sourceLastRow)
-        WriteIndividualSheet individualSheet, syntaxEvents, useLeadingFunctionB1
+        WriteIndividualSheet individualSheet, syntaxEvents, firstTargetIsFunction
         resultMessage = "個別シート出力: 実施（" & individualSheet.Name & "）"
     Else
         resultMessage = "個別シート出力: スキップ（対象シートなし）"
@@ -460,15 +460,15 @@ End Sub
 
 Private Sub ResetCurrentSourceFunctionMarks(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
     Dim rowIndex As Long
-    Dim targetCell As Range
+    Dim markValues As Variant
 
     If sourceSheet Is Nothing Then Exit Sub
     If lastRow <= 0 Then Exit Sub
 
+    markValues = ReadColumnValues(sourceSheet, FUNCTION_MARK_COL, 1, lastRow)
     For rowIndex = 1 To lastRow
-        Set targetCell = sourceSheet.Cells(rowIndex, FUNCTION_MARK_COL)
-        If CStr(targetCell.Value) = FUNCTION_MARK_TEXT Then
-            targetCell.ClearContents
+        If GetCellTextFromValue(markValues(rowIndex, 1)) = FUNCTION_MARK_TEXT Then
+            sourceSheet.Cells(rowIndex, FUNCTION_MARK_COL).ClearContents
         End If
     Next rowIndex
 End Sub
@@ -492,7 +492,7 @@ Private Sub MarkCurrentSourceSheet( _
     ByRef sourceTextValues As Variant, _
     ByVal lastRow As Long, _
     ByRef markedCount As Long, _
-    ByVal leadingFunctionStartsAtB1 As Boolean)
+    ByVal firstTargetIsFunction As Boolean)
 
     ' 現行ソースシートのC列を走査し、対象構文に応じてA/B列へマーキングする
     ' - function 行      : A列へ★、B列へ B(次セクション番号) を設定する
@@ -516,7 +516,7 @@ Private Sub MarkCurrentSourceSheet( _
         markFillColor = ResolveMarkFillColor()
     End If
 
-    If leadingFunctionStartsAtB1 Then
+    If firstTargetIsFunction Then
         currentSectionIndex = 0
     Else
         currentSectionIndex = 1
@@ -559,7 +559,7 @@ ContinueMarkLoop:
     Next rowIndex
 End Sub
 
-Private Function ShouldStartFunctionSectionFromB1( _
+Private Function IsFirstMarkTargetFunction( _
     ByRef sourceTextValues As Variant, _
     ByVal lastRow As Long) As Boolean
 
@@ -575,7 +575,7 @@ Private Function ShouldStartFunctionSectionFromB1( _
         If Len(Trim$(lineText)) = 0 Then GoTo ContinueLeadingCheck
 
         If IsFunctionLine(lineText) Then
-            ShouldStartFunctionSectionFromB1 = True
+            IsFirstMarkTargetFunction = True
             Exit Function
         End If
 
@@ -678,13 +678,13 @@ ContinueLoop:
     Set CollectSyntaxEventsInRange = events
 End Function
 
-Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal syntaxEvents As Collection, ByVal leadingFunctionStartsAtB1 As Boolean)
+Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal syntaxEvents As Collection, ByVal firstTargetIsFunction As Boolean)
     ' 個別シートへ、仕様の書式で処理セクション/確認ブロックを書き込む
     On Error GoTo ErrorHandler
 
     Dim sectionIndex As Long
     Dim nextBlockStartRow As Long
-    Dim startFromFunctionAtB1 As Boolean
+    Dim firstSectionIsFunction As Boolean
     Dim plannedLastWriteRow As Long
     Dim errorNumber As Long
     Dim errorDescription As String
@@ -693,13 +693,13 @@ Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal synta
     ' 追記処理の開始前に、個別シート15行目をテンプレートとして退避しておく
     PrepareIndividualSheetTemplateSnapshot individualSheet
 
-    startFromFunctionAtB1 = (leadingFunctionStartsAtB1 And IsFirstSyntaxEventFunction(syntaxEvents))
-    plannedLastWriteRow = EstimateLastWriteRow(syntaxEvents, startFromFunctionAtB1)
+    firstSectionIsFunction = (firstTargetIsFunction And IsFirstSyntaxEventFunction(syntaxEvents))
+    plannedLastWriteRow = EstimateLastWriteRow(syntaxEvents, firstSectionIsFunction)
     EnsureIndividualSheetWritableCapacity individualSheet, plannedLastWriteRow
     mPreAllocatedWritableLastRow = plannedLastWriteRow
 
     ' 初期値（固定）
-    If startFromFunctionAtB1 Then
+    If firstSectionIsFunction Then
         sectionIndex = 0
         nextBlockStartRow = SECTION_HEADER_START_ROW
     Else
@@ -810,13 +810,13 @@ End Sub
 
 Private Function EstimateLastWriteRow( _
     ByVal syntaxEvents As Collection, _
-    ByVal startFromFunctionAtB1 As Boolean) As Long
+    ByVal firstSectionIsFunction As Boolean) As Long
 
     Dim sectionIndex As Long
     Dim nextBlockStartRow As Long
     Dim maxRow As Long
 
-    If startFromFunctionAtB1 Then
+    If firstSectionIsFunction Then
         sectionIndex = 0
         nextBlockStartRow = SECTION_HEADER_START_ROW
     Else
@@ -971,21 +971,8 @@ Private Sub WriteNormalBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVa
     ws.Range("L" & CStr(startRow)).value = SYMBOL_EMPTY
     ws.Range("N" & CStr(startRow)).value = EventText(eventItem, "Title")
 
-    EnsureIndividualSheetWritableRow ws, startRow + 1
-    ws.Range("H" & CStr(startRow + 1)).value = 1
-    ws.Range("M" & CStr(startRow + 1)).value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 1)).value = EventText(eventItem, "Cond1")
-    ws.Range("AX" & CStr(startRow + 1)).value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 1)).value = EventText(eventItem, "Result1")
-    ws.Range("CF" & CStr(startRow + 1)).value = "1,4"
-
-    EnsureIndividualSheetWritableRow ws, startRow + 3
-    ws.Range("H" & CStr(startRow + 3)).value = 2
-    ws.Range("M" & CStr(startRow + 3)).value = SYMBOL_EMPTY
-    ws.Range("O" & CStr(startRow + 3)).value = EventText(eventItem, "Cond2")
-    ws.Range("AX" & CStr(startRow + 3)).value = SYMBOL_EMPTY
-    ws.Range("AZ" & CStr(startRow + 3)).value = EventText(eventItem, "Result2")
-    ws.Range("CF" & CStr(startRow + 3)).value = "1,4"
+    WriteConditionResultRow ws, startRow + 1, 1, EventText(eventItem, "Cond1"), EventText(eventItem, "Result1")
+    WriteConditionResultRow ws, startRow + 3, 2, EventText(eventItem, "Cond2"), EventText(eventItem, "Result2")
 End Sub
 
 Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection) As Long
@@ -1042,6 +1029,11 @@ End Function
 
 Private Sub WriteSwitchBranchRow(ByVal ws As Worksheet, ByVal rowIndex As Long, ByVal seqNo As Long, ByVal conditionText As String, ByVal expectedText As String)
     ' switchの分岐行（case/default相当）の共通出力
+    WriteConditionResultRow ws, rowIndex, seqNo, conditionText, expectedText
+End Sub
+
+Private Sub WriteConditionResultRow(ByVal ws As Worksheet, ByVal rowIndex As Long, ByVal seqNo As Long, ByVal conditionText As String, ByVal expectedText As String)
+    ' 通常条件とswitch分岐で共通する確認結果行を出力する
     EnsureIndividualSheetWritableRow ws, rowIndex
 
     ws.Range("H" & CStr(rowIndex)).value = seqNo

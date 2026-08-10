@@ -5,6 +5,7 @@ Private Const DEFAULT_COMPLETION_MESSAGE As String = "SQLƒCƒ“ƒWƒFƒNƒVƒ‡ƒ“‘ÎôÏ‚
 Private Const ESCAPE_TARGET_PREFIXES_CSV As String = "pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr"
 Private Const OPTION_ONLY_A_VALUE_ROW_FILL_TARGET As String = "Both" ' None / Left / Right / Both
 Private Const ONLY_A_VALUE_ROW_FILL_COLOR_HEX As String = "#a6a6a6"
+Private Const FIRST_SCAN_ROW As Long = 4
 Public Type EscapePartsMarkingUiOptions
     Enabled As Boolean
     TargetWorkbookPath As String
@@ -169,25 +170,29 @@ Private Sub ProcessOneSheet(ByVal ws As Worksheet, ByVal prefixes As Collection,
     Dim lastRow As Long
     Dim onlyAFillColor As Long
     Dim fillTargetOption As String
+    Dim sourceValues As Variant
 
     lastRowA = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     lastRowB = ws.Cells(ws.Rows.Count, "B").End(xlUp).Row
 
     lastRow = lastRowA
     If lastRowB > lastRow Then lastRow = lastRowB
-    If lastRow < 4 Then Exit Sub
+    If lastRow < FIRST_SCAN_ROW Then Exit Sub
 
-    onlyAFillColor = ResolveOnlyAValueRowFillColor()
     fillTargetOption = ResolveOnlyAValueRowFillTargetOption()
+    sourceValues = ws.Range(ws.Cells(FIRST_SCAN_ROW, "A"), ws.Cells(lastRow, "B")).Value2
 
-    Dim r As Long
-    For r = 4 To lastRow
-        If ShouldFillOnlyAValueRow(ws, r) Then
-            ApplyOnlyAValueRowFill ws, r, onlyAFillColor, fillTargetOption
-        End If
-    Next r
+    If fillTargetOption <> "NONE" Then
+        onlyAFillColor = ResolveOnlyAValueRowFillColor()
+        Dim rowIndex As Long
+        For rowIndex = 1 To UBound(sourceValues, 1)
+            If ShouldFillOnlyAValueRowValues(sourceValues(rowIndex, 1), sourceValues(rowIndex, 2)) Then
+                ApplyOnlyAValueRowFill ws, FIRST_SCAN_ROW + rowIndex - 1, onlyAFillColor, fillTargetOption
+            End If
+        Next rowIndex
+    End If
 
-    MarkSqlPartsInRows ws, prefixes, hitMessage, 4, lastRow
+    MarkSqlPartsInRows ws, prefixes, hitMessage, FIRST_SCAN_ROW, sourceValues
 End Sub
 
 Private Sub MarkSqlPartsInRows( _
@@ -195,28 +200,32 @@ Private Sub MarkSqlPartsInRows( _
     ByVal prefixes As Collection, _
     ByVal hitMessage As String, _
     ByVal firstRow As Long, _
-    ByVal lastRow As Long)
+    ByRef sourceValues As Variant)
 
     Dim rowCount As Long
-    rowCount = lastRow - firstRow + 1
+    rowCount = UBound(sourceValues, 1)
     If rowCount <= 0 Then Exit Sub
 
     Dim rowTexts() As String
     Dim rowStartPositions() As Long
+    Dim virtualLines() As String
     ReDim rowTexts(1 To rowCount)
     ReDim rowStartPositions(1 To rowCount)
+    ReDim virtualLines(1 To rowCount)
 
     Dim virtualText As String
     Dim rowIndex As Long
-    Dim rowNumber As Long
+    Dim nextStartPosition As Long
 
+    nextStartPosition = 1
     For rowIndex = 1 To rowCount
-        rowNumber = firstRow + rowIndex - 1
-        rowTexts(rowIndex) = GetMarkingCellText(ws.Cells(rowNumber, "B").Value2)
-        rowStartPositions(rowIndex) = Len(virtualText) + 1
-        virtualText = virtualText & rowTexts(rowIndex)
-        If rowIndex < rowCount Then virtualText = virtualText & vbLf
+        rowTexts(rowIndex) = GetMarkingCellText(sourceValues(rowIndex, 2))
+        virtualLines(rowIndex) = rowTexts(rowIndex)
+        rowStartPositions(rowIndex) = nextStartPosition
+        nextStartPosition = nextStartPosition + Len(rowTexts(rowIndex))
+        If rowIndex < rowCount Then nextStartPosition = nextStartPosition + Len(vbLf)
     Next rowIndex
+    virtualText = Join(virtualLines, vbLf)
 
     If InStr(1, virtualText, "(", vbBinaryCompare) = 0 Then Exit Sub
 
@@ -244,7 +253,9 @@ Private Sub BuildExecutableCodePositionMap( _
     ByVal text As String, _
     ByRef executableCodePositions() As Boolean)
 
-    ReDim executableCodePositions(1 To Len(text))
+    Dim textLength As Long
+    textLength = Len(text)
+    ReDim executableCodePositions(1 To textLength)
 
     Dim scanPos As Long
     Dim ch As String
@@ -256,10 +267,10 @@ Private Sub BuildExecutableCodePositionMap( _
 
     scanPos = 1
 
-    Do While scanPos <= Len(text)
+    Do While scanPos <= textLength
         ch = Mid$(text, scanPos, 1)
         nextCh = vbNullString
-        If scanPos < Len(text) Then nextCh = Mid$(text, scanPos + 1, 1)
+        If scanPos < textLength Then nextCh = Mid$(text, scanPos + 1, 1)
 
         If inLineComment Then
             If ch = vbCr Or ch = vbLf Then inLineComment = False
@@ -274,7 +285,7 @@ Private Sub BuildExecutableCodePositionMap( _
         ElseIf inQuote Then
             If ch = "\" Then
                 scanPos = scanPos + 1
-                If scanPos <= Len(text) Then scanPos = scanPos + 1
+                If scanPos <= textLength Then scanPos = scanPos + 1
             ElseIf ch = quoteChar Then
                 If nextCh = quoteChar Then
                     scanPos = scanPos + 2
@@ -438,15 +449,9 @@ Private Function MinLong(ByVal leftValue As Long, ByVal rightValue As Long) As L
     End If
 End Function
 
-Private Function ShouldFillOnlyAValueRow(ByVal ws As Worksheet, ByVal rowNumber As Long) As Boolean
-    Dim valueA As Variant
-    Dim valueB As Variant
-
-    valueA = ws.Cells(rowNumber, "A").Value2
-    valueB = ws.Cells(rowNumber, "B").Value2
-
-    ShouldFillOnlyAValueRow = HasCellValueForOnlyARowRule(valueA) And _
-                              (Not HasCellValueForOnlyARowRule(valueB))
+Private Function ShouldFillOnlyAValueRowValues(ByVal valueA As Variant, ByVal valueB As Variant) As Boolean
+    ShouldFillOnlyAValueRowValues = HasCellValueForOnlyARowRule(valueA) And _
+                                   (Not HasCellValueForOnlyARowRule(valueB))
 End Function
 
 Private Sub ApplyOnlyAValueRowFill(ByVal ws As Worksheet, ByVal rowNumber As Long, ByVal fillColor As Long, ByVal fillTargetOption As String)
@@ -552,7 +557,10 @@ Private Function FindMatchingClosingParen( _
     ByRef executableCodePositions() As Boolean, _
     ByVal openParenPos As Long) As Long
 
-    If openParenPos < 1 Or openParenPos > Len(text) Then Exit Function
+    Dim textLength As Long
+    textLength = Len(text)
+
+    If openParenPos < 1 Or openParenPos > textLength Then Exit Function
     If Mid$(text, openParenPos, 1) <> "(" Then Exit Function
     If Not executableCodePositions(openParenPos) Then Exit Function
 
@@ -562,7 +570,7 @@ Private Function FindMatchingClosingParen( _
 
     depth = 0
 
-    For scanPos = openParenPos To Len(text)
+    For scanPos = openParenPos To textLength
         If executableCodePositions(scanPos) Then
             ch = Mid$(text, scanPos, 1)
 
