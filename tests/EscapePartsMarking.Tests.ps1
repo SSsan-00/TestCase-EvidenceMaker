@@ -191,6 +191,76 @@ try {
 
     $ws.Range('A34').Value2 = 'ONLY_A'
 
+    $normalInterpolated = '$"{sqlS(XXX)}"'
+    $normalInterpolatedLiteral = '$"literal sqlS(XXX)"'
+    $normalInterpolatedEscapedBraces = '$"{{sqlS(XXX)}}"'
+    $verbatimInterpolatedDollarFirst = '$@"path {sqlS(XXX)}"'
+    $verbatimInterpolatedAtFirst = '@$"path {sqlS(XXX)}"'
+    $rawInterpolated = '$"""raw {sqlS(XXX)} text"""'
+    $rawInterpolatedLiteral = '$"""sqlS(XXX)"""'
+    $rawDoubleDollar = '$$"""json { "value": {{sqlS(XXX)}} }"""'
+    $rawDoubleDollarLiteral = '$$"""literal {sqlS(XXX)}"""'
+    $rawDoubleDollarOuterBrace = '$$"""literal {{{sqlS(XXX)}}}"""'
+    $interpolationNestedString = '$"{GetText("sqlS(XXX)")}"'
+    $interpolationTargetWithNestedString = '$"{sqlS(GetText(")"))}"'
+    $normalInterpolatedMultiple = '$"{sqlS(one)}-{sqlS(two)}"'
+    $interpolationWithComment = '$"{sqlS(value /* ) */)}"'
+    $nonInterpolatedRaw = '"""sqlS(XXX)"""'
+    $nonInterpolatedVerbatim = '@"sqlS(XXX)"'
+    $rawFourQuoteDelimiter = '$""""{sqlS(XXX)}""""'
+    $rawTripleDollar = '$$$"""{{{sqlS(XXX)}}}"""'
+    $interpolationFormatText = '$"{value:sqlS(XXX)}"'
+    $rawInterpolationFormatText = '$"""{value:sqlS(XXX)}"""'
+    $nestedInterpolation = '$"{Wrap($"{sqlS(XXX)}")}"'
+    $rawInterpolationNestedString = '$"""{GetText("sqlS(XXX)")}"""'
+    $normalInterpolationOuterBrace = '$"{{{sqlS(XXX)}}}"'
+    $interpolationObjectInitializer = '$"{sqlS(new Item { Value = XXX })}"'
+    $rawFourQuoteWithTripleQuoteContent = '$""""raw """ text {sqlS(XXX)}""""'
+
+    $ws.Range('B36').Value2 = $normalInterpolated
+    $ws.Range('B38').Value2 = $normalInterpolatedLiteral
+    $ws.Range('B40').Value2 = $normalInterpolatedEscapedBraces
+    $ws.Range('B42').Value2 = $verbatimInterpolatedDollarFirst
+    $ws.Range('B44').Value2 = $verbatimInterpolatedAtFirst
+    $ws.Range('B46').Value2 = $rawInterpolated
+    $ws.Range('B48').Value2 = $rawInterpolatedLiteral
+    $ws.Range('B50').Value2 = $rawDoubleDollar
+    $ws.Range('B52').Value2 = $rawDoubleDollarLiteral
+    $ws.Range('B54').Value2 = $rawDoubleDollarOuterBrace
+    $ws.Range('B56').Value2 = $interpolationNestedString
+    $ws.Range('B58').Value2 = $interpolationTargetWithNestedString
+    $ws.Range('B60').Value2 = $normalInterpolatedMultiple
+
+    $ws.Range('B62').Value2 = '$@"start {sqlS('
+    $ws.Range('B63').Value2 = 'XXX'
+    $ws.Range('B64').Value2 = ')} end"'
+
+    $ws.Range('B66').Value2 = '$"""'
+    $ws.Range('B67').Value2 = 'before {sqlS('
+    $ws.Range('B68').Value2 = 'XXX'
+    $ws.Range('B69').Value2 = ')}'
+    $ws.Range('B70').Value2 = 'after'
+    $ws.Range('B71').Value2 = '"""'
+
+    $ws.Range('B73').Value2 = '$$"""'
+    $ws.Range('B74').Value2 = '{ "x": {{sqlS('
+    $ws.Range('B75').Value2 = 'XXX'
+    $ws.Range('B76').Value2 = ')}} }'
+    $ws.Range('B77').Value2 = '"""'
+
+    $ws.Range('B79').Value2 = $interpolationWithComment
+    $ws.Range('B81').Value2 = $nonInterpolatedRaw
+    $ws.Range('B82').Value2 = $nonInterpolatedVerbatim
+    $ws.Range('B83').Value2 = $rawFourQuoteDelimiter
+    $ws.Range('B85').Value2 = $rawTripleDollar
+    $ws.Range('B87').Value2 = $interpolationFormatText
+    $ws.Range('B88').Value2 = $rawInterpolationFormatText
+    $ws.Range('B89').Value2 = $nestedInterpolation
+    $ws.Range('B91').Value2 = $rawInterpolationNestedString
+    $ws.Range('B93').Value2 = $normalInterpolationOuterBrace
+    $ws.Range('B95').Value2 = $interpolationObjectInitializer
+    $ws.Range('B97').Value2 = $rawFourQuoteWithTripleQuoteContent
+
     $targetWb.SaveAs($targetWorkbookPath, 51)
     $targetWb.Close($false)
     Release-ComObject $targetWb
@@ -253,6 +323,55 @@ try {
 
     Assert-Equal 10921638 ([int]$verifyWs.Range('A34').Interior.Color) 'A34 fill color mismatch.'
     Assert-Equal 10921638 ([int]$verifyWs.Range('B34').Interior.Color) 'B34 fill color mismatch.'
+
+    Assert-CharactersRedBold $verifyWs.Range('B36') ($normalInterpolated.IndexOf('sqlS') + 1) 9 'B36 interpolated function call'
+    Assert-CharacterUnmarked $verifyWs.Range('B36') 1 'B36 interpolation prefix'
+    Assert-Equal 'HIT' ([string]$verifyWs.Range('C36').Value2) 'C36 hit message mismatch.'
+
+    Assert-CellNotHit $verifyWs 'B38' 'C38'
+    Assert-CellNotHit $verifyWs 'B40' 'C40'
+
+    Assert-CharactersRedBold $verifyWs.Range('B42') ($verbatimInterpolatedDollarFirst.IndexOf('sqlS') + 1) 9 'B42 verbatim interpolated function call'
+    Assert-CharactersRedBold $verifyWs.Range('B44') ($verbatimInterpolatedAtFirst.IndexOf('sqlS') + 1) 9 'B44 reversed verbatim interpolated function call'
+    Assert-CharactersRedBold $verifyWs.Range('B46') ($rawInterpolated.IndexOf('sqlS') + 1) 9 'B46 raw interpolated function call'
+    Assert-CellNotHit $verifyWs 'B48' 'C48'
+    Assert-CharactersRedBold $verifyWs.Range('B50') ($rawDoubleDollar.IndexOf('sqlS') + 1) 9 'B50 double-dollar raw function call'
+    Assert-CellNotHit $verifyWs 'B52' 'C52'
+    Assert-CharactersRedBold $verifyWs.Range('B54') ($rawDoubleDollarOuterBrace.IndexOf('sqlS') + 1) 9 'B54 raw function call with outer literal brace'
+    Assert-CellNotHit $verifyWs 'B56' 'C56'
+    Assert-CharactersRedBold $verifyWs.Range('B58') ($interpolationTargetWithNestedString.IndexOf('sqlS') + 1) 18 'B58 interpolated call with nested string'
+
+    $firstInterpolatedCall = $normalInterpolatedMultiple.IndexOf('sqlS') + 1
+    $secondInterpolatedCall = $normalInterpolatedMultiple.IndexOf('sqlS', $firstInterpolatedCall) + 1
+    Assert-CharactersRedBold $verifyWs.Range('B60') $firstInterpolatedCall 9 'B60 first interpolated function call'
+    Assert-CharactersRedBold $verifyWs.Range('B60') $secondInterpolatedCall 9 'B60 second interpolated function call'
+
+    Assert-CharactersRedBold $verifyWs.Range('B62') 11 5 'B62 multiline verbatim call start'
+    Assert-CellFullyRedBold $verifyWs.Range('B63') 'B63'
+    Assert-CharactersRedBold $verifyWs.Range('B64') 1 1 'B64 multiline verbatim call end'
+
+    Assert-CharactersRedBold $verifyWs.Range('B67') 9 5 'B67 multiline raw call start'
+    Assert-CellFullyRedBold $verifyWs.Range('B68') 'B68'
+    Assert-CharactersRedBold $verifyWs.Range('B69') 1 1 'B69 multiline raw call end'
+    Assert-CellNotHit $verifyWs 'B70' 'C70'
+
+    Assert-CharactersRedBold $verifyWs.Range('B74') 10 5 'B74 multiline double-dollar raw call start'
+    Assert-CellFullyRedBold $verifyWs.Range('B75') 'B75'
+    Assert-CharactersRedBold $verifyWs.Range('B76') 1 1 'B76 multiline double-dollar raw call end'
+
+    Assert-CharactersRedBold $verifyWs.Range('B79') ($interpolationWithComment.IndexOf('sqlS') + 1) 19 'B79 interpolated call containing comment'
+    Assert-CellNotHit $verifyWs 'B81' 'C81'
+    Assert-CellNotHit $verifyWs 'B82' 'C82'
+    Assert-CharactersRedBold $verifyWs.Range('B83') ($rawFourQuoteDelimiter.IndexOf('sqlS') + 1) 9 'B83 four-quote raw delimiter'
+    Assert-CharactersRedBold $verifyWs.Range('B85') ($rawTripleDollar.IndexOf('sqlS') + 1) 9 'B85 triple-dollar raw function call'
+    Assert-CellNotHit $verifyWs 'B87' 'C87'
+    Assert-CellNotHit $verifyWs 'B88' 'C88'
+    Assert-CharactersRedBold $verifyWs.Range('B89') ($nestedInterpolation.IndexOf('sqlS') + 1) 9 'B89 nested interpolated function call'
+    Assert-CellNotHit $verifyWs 'B91' 'C91'
+    Assert-CharactersRedBold $verifyWs.Range('B93') ($normalInterpolationOuterBrace.IndexOf('sqlS') + 1) 9 'B93 interpolated function call with outer literal brace'
+    $objectInitializerCallLength = $interpolationObjectInitializer.LastIndexOf(')') - $interpolationObjectInitializer.IndexOf('sqlS') + 1
+    Assert-CharactersRedBold $verifyWs.Range('B95') ($interpolationObjectInitializer.IndexOf('sqlS') + 1) $objectInitializerCallLength 'B95 interpolated call with object initializer'
+    Assert-CharactersRedBold $verifyWs.Range('B97') ($rawFourQuoteWithTripleQuoteContent.IndexOf('sqlS') + 1) 9 'B97 raw function call after shorter quote run'
 
     Write-TestLog 'All EscapePartsMarking tests passed.'
 }

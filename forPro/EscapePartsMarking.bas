@@ -254,68 +254,397 @@ Private Sub BuildExecutableCodePositionMap( _
     ByRef executableCodePositions() As Boolean)
 
     Dim textLength As Long
+    Dim scanPos As Long
+
     textLength = Len(text)
     ReDim executableCodePositions(1 To textLength)
 
-    Dim scanPos As Long
+    scanPos = 1
+    ScanCSharpCode text, scanPos, textLength, executableCodePositions, 0
+End Sub
+
+Private Sub ScanCSharpCode( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByRef executableCodePositions() As Boolean, _
+    ByVal interpolationEndBraceCount As Long)
+
     Dim ch As String
     Dim nextCh As String
-    Dim quoteChar As String
-    Dim inQuote As Boolean
-    Dim inLineComment As Boolean
-    Dim inBlockComment As Boolean
-
-    scanPos = 1
+    Dim closingRun As Long
+    Dim codeBraceDepth As Long
+    Dim parenthesisDepth As Long
+    Dim bracketDepth As Long
 
     Do While scanPos <= textLength
         ch = Mid$(text, scanPos, 1)
         nextCh = vbNullString
         If scanPos < textLength Then nextCh = Mid$(text, scanPos + 1, 1)
 
-        If inLineComment Then
-            If ch = vbCr Or ch = vbLf Then inLineComment = False
-            scanPos = scanPos + 1
-        ElseIf inBlockComment Then
-            If ch = "*" And nextCh = "/" Then
-                inBlockComment = False
-                scanPos = scanPos + 2
-            Else
+        If interpolationEndBraceCount > 0 And ch = "}" Then
+            closingRun = CountConsecutiveCharacter(text, scanPos, "}")
+
+            Do While closingRun > 0 And codeBraceDepth > 0
+                executableCodePositions(scanPos) = True
                 scanPos = scanPos + 1
+                closingRun = closingRun - 1
+                codeBraceDepth = codeBraceDepth - 1
+            Loop
+
+            If codeBraceDepth = 0 And closingRun >= interpolationEndBraceCount Then
+                Exit Sub
             End If
-        ElseIf inQuote Then
-            If ch = "\" Then
+
+            Do While closingRun > 0
+                executableCodePositions(scanPos) = True
                 scanPos = scanPos + 1
-                If scanPos <= textLength Then scanPos = scanPos + 1
-            ElseIf ch = quoteChar Then
-                If nextCh = quoteChar Then
-                    scanPos = scanPos + 2
-                Else
-                    inQuote = False
-                    quoteChar = vbNullString
-                    scanPos = scanPos + 1
-                End If
-            Else
-                scanPos = scanPos + 1
-            End If
-        ElseIf ch = """" Or ch = "'" Then
-            inQuote = True
-            quoteChar = ch
-            scanPos = scanPos + 1
+                closingRun = closingRun - 1
+            Loop
+        ElseIf TrySkipCSharpStringLiteral(text, scanPos, textLength, executableCodePositions) Then
+            ' 文字列内は、補間式として再帰解析されたコード部分だけがTrueになる
         ElseIf ch = "/" And nextCh = "/" Then
-            inLineComment = True
-            scanPos = scanPos + 2
+            SkipCSharpLineComment text, scanPos, textLength
         ElseIf ch = "#" Then
-            inLineComment = True
-            scanPos = scanPos + 1
+            ' 既存仕様との互換性のため、#以降も行コメントとして扱う
+            SkipCSharpLineComment text, scanPos, textLength
         ElseIf ch = "/" And nextCh = "*" Then
-            inBlockComment = True
-            scanPos = scanPos + 2
+            SkipCSharpBlockComment text, scanPos, textLength
+        ElseIf IsInterpolationFormatSeparator( _
+            text, scanPos, textLength, interpolationEndBraceCount, _
+            codeBraceDepth, parenthesisDepth, bracketDepth) Then
+
+            scanPos = scanPos + 1
+            SkipInterpolationFormatText text, scanPos, textLength, interpolationEndBraceCount
+            Exit Sub
         Else
             executableCodePositions(scanPos) = True
+
+            Select Case ch
+                Case "{"
+                    codeBraceDepth = codeBraceDepth + 1
+                Case "("
+                    parenthesisDepth = parenthesisDepth + 1
+                Case ")"
+                    If parenthesisDepth > 0 Then parenthesisDepth = parenthesisDepth - 1
+                Case "["
+                    bracketDepth = bracketDepth + 1
+                Case "]"
+                    If bracketDepth > 0 Then bracketDepth = bracketDepth - 1
+            End Select
+
             scanPos = scanPos + 1
         End If
     Loop
 End Sub
+
+Private Function TrySkipCSharpStringLiteral( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByRef executableCodePositions() As Boolean) As Boolean
+
+    Dim ch As String
+    Dim dollarCount As Long
+    Dim quoteCount As Long
+    Dim quotePos As Long
+
+    ch = Mid$(text, scanPos, 1)
+
+    If ch = "$" Then
+        dollarCount = CountConsecutiveCharacter(text, scanPos, "$")
+        quotePos = scanPos + dollarCount
+        quoteCount = CountConsecutiveCharacter(text, quotePos, """")
+
+        If quoteCount >= 3 Then
+            ScanRawString text, scanPos, textLength, executableCodePositions, dollarCount, quoteCount
+            TrySkipCSharpStringLiteral = True
+            Exit Function
+        End If
+
+        If dollarCount = 1 Then
+            If quoteCount = 1 Then
+                ScanInterpolatedQuotedString text, scanPos, textLength, executableCodePositions, quotePos, False
+                TrySkipCSharpStringLiteral = True
+                Exit Function
+            End If
+
+            If quotePos <= textLength Then
+                If Mid$(text, quotePos, 1) = "@" Then
+                    quotePos = quotePos + 1
+                    If quotePos <= textLength Then
+                        If Mid$(text, quotePos, 1) = """" Then
+                            ScanInterpolatedQuotedString text, scanPos, textLength, executableCodePositions, quotePos, True
+                            TrySkipCSharpStringLiteral = True
+                            Exit Function
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    ElseIf ch = "@" Then
+        quotePos = scanPos + 1
+
+        If quotePos <= textLength Then
+            If Mid$(text, quotePos, 1) = "$" Then quotePos = quotePos + 1
+
+            If quotePos <= textLength Then
+                If Mid$(text, quotePos, 1) = """" Then
+                    If quotePos = scanPos + 2 Then
+                        ScanInterpolatedQuotedString text, scanPos, textLength, executableCodePositions, quotePos, True
+                    Else
+                        SkipQuotedString text, scanPos, textLength, quotePos, """", True
+                    End If
+
+                    TrySkipCSharpStringLiteral = True
+                    Exit Function
+                End If
+            End If
+        End If
+    ElseIf ch = """" Then
+        quoteCount = CountConsecutiveCharacter(text, scanPos, """")
+
+        If quoteCount >= 3 Then
+            ScanRawString text, scanPos, textLength, executableCodePositions, 0, quoteCount
+        Else
+            SkipQuotedString text, scanPos, textLength, scanPos, """", False
+        End If
+
+        TrySkipCSharpStringLiteral = True
+        Exit Function
+    ElseIf ch = "'" Then
+        SkipQuotedString text, scanPos, textLength, scanPos, "'", False
+        TrySkipCSharpStringLiteral = True
+        Exit Function
+    End If
+End Function
+
+Private Sub ScanInterpolatedQuotedString( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByRef executableCodePositions() As Boolean, _
+    ByVal quotePos As Long, _
+    ByVal isVerbatim As Boolean)
+
+    Dim ch As String
+    Dim nextCh As String
+    Dim braceRun As Long
+
+    scanPos = quotePos + 1
+
+    Do While scanPos <= textLength
+        ch = Mid$(text, scanPos, 1)
+        nextCh = vbNullString
+        If scanPos < textLength Then nextCh = Mid$(text, scanPos + 1, 1)
+
+        If ch = """" Then
+            If isVerbatim And nextCh = """" Then
+                scanPos = scanPos + 2
+            Else
+                scanPos = scanPos + 1
+                Exit Sub
+            End If
+        ElseIf (Not isVerbatim) And ch = "\" Then
+            scanPos = scanPos + 1
+            If scanPos <= textLength Then scanPos = scanPos + 1
+        ElseIf ch = "{" Then
+            braceRun = CountConsecutiveCharacter(text, scanPos, "{")
+
+            If (braceRun Mod 2) = 1 Then
+                scanPos = scanPos + braceRun
+                ScanCSharpCode text, scanPos, textLength, executableCodePositions, 1
+
+                If scanPos <= textLength Then
+                    If Mid$(text, scanPos, 1) = "}" Then
+                        scanPos = scanPos + CountConsecutiveCharacter(text, scanPos, "}")
+                    End If
+                End If
+            Else
+                scanPos = scanPos + braceRun
+            End If
+        ElseIf ch = "}" Then
+            scanPos = scanPos + CountConsecutiveCharacter(text, scanPos, "}")
+        Else
+            scanPos = scanPos + 1
+        End If
+    Loop
+End Sub
+
+Private Sub ScanRawString( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByRef executableCodePositions() As Boolean, _
+    ByVal dollarCount As Long, _
+    ByVal quoteCount As Long)
+
+    Dim quoteStart As Long
+    Dim currentQuoteRun As Long
+    Dim braceRun As Long
+
+    quoteStart = scanPos + dollarCount
+    scanPos = quoteStart + quoteCount
+
+    Do While scanPos <= textLength
+        If Mid$(text, scanPos, 1) = """" Then
+            currentQuoteRun = CountConsecutiveCharacter(text, scanPos, """")
+
+            If currentQuoteRun >= quoteCount Then
+                scanPos = scanPos + currentQuoteRun
+                Exit Sub
+            End If
+
+            scanPos = scanPos + currentQuoteRun
+        ElseIf dollarCount > 0 And Mid$(text, scanPos, 1) = "{" Then
+            braceRun = CountConsecutiveCharacter(text, scanPos, "{")
+
+            If braceRun >= dollarCount And braceRun < (dollarCount * 2) Then
+                scanPos = scanPos + braceRun
+                ScanCSharpCode text, scanPos, textLength, executableCodePositions, dollarCount
+
+                If scanPos <= textLength Then
+                    If Mid$(text, scanPos, 1) = "}" Then
+                        scanPos = scanPos + CountConsecutiveCharacter(text, scanPos, "}")
+                    End If
+                End If
+            Else
+                scanPos = scanPos + braceRun
+            End If
+        Else
+            scanPos = scanPos + 1
+        End If
+    Loop
+End Sub
+
+Private Sub SkipQuotedString( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByVal quotePos As Long, _
+    ByVal quoteChar As String, _
+    ByVal isVerbatim As Boolean)
+
+    Dim ch As String
+    Dim nextCh As String
+
+    scanPos = quotePos + 1
+
+    Do While scanPos <= textLength
+        ch = Mid$(text, scanPos, 1)
+        nextCh = vbNullString
+        If scanPos < textLength Then nextCh = Mid$(text, scanPos + 1, 1)
+
+        If isVerbatim Then
+            If ch = quoteChar And nextCh = quoteChar Then
+                scanPos = scanPos + 2
+            ElseIf ch = quoteChar Then
+                scanPos = scanPos + 1
+                Exit Sub
+            Else
+                scanPos = scanPos + 1
+            End If
+        ElseIf ch = "\" Then
+            scanPos = scanPos + 1
+            If scanPos <= textLength Then scanPos = scanPos + 1
+        ElseIf ch = quoteChar Then
+            scanPos = scanPos + 1
+            Exit Sub
+        Else
+            scanPos = scanPos + 1
+        End If
+    Loop
+End Sub
+
+Private Sub SkipCSharpLineComment(ByVal text As String, ByRef scanPos As Long, ByVal textLength As Long)
+    Do While scanPos <= textLength
+        If Mid$(text, scanPos, 1) = vbCr Then
+            scanPos = scanPos + 1
+            If scanPos <= textLength Then
+                If Mid$(text, scanPos, 1) = vbLf Then scanPos = scanPos + 1
+            End If
+            Exit Sub
+        ElseIf Mid$(text, scanPos, 1) = vbLf Then
+            scanPos = scanPos + 1
+            Exit Sub
+        Else
+            scanPos = scanPos + 1
+        End If
+    Loop
+End Sub
+
+Private Sub SkipCSharpBlockComment(ByVal text As String, ByRef scanPos As Long, ByVal textLength As Long)
+    scanPos = scanPos + 2
+
+    Do While scanPos <= textLength
+        If scanPos < textLength Then
+            If Mid$(text, scanPos, 2) = "*/" Then
+                scanPos = scanPos + 2
+                Exit Sub
+            End If
+        End If
+
+        scanPos = scanPos + 1
+    Loop
+End Sub
+
+Private Function IsInterpolationFormatSeparator( _
+    ByVal text As String, _
+    ByVal scanPos As Long, _
+    ByVal textLength As Long, _
+    ByVal interpolationEndBraceCount As Long, _
+    ByVal codeBraceDepth As Long, _
+    ByVal parenthesisDepth As Long, _
+    ByVal bracketDepth As Long) As Boolean
+
+    If interpolationEndBraceCount <= 0 Then Exit Function
+    If Mid$(text, scanPos, 1) <> ":" Then Exit Function
+    If codeBraceDepth > 0 Or parenthesisDepth > 0 Or bracketDepth > 0 Then Exit Function
+
+    If scanPos > 1 Then
+        If Mid$(text, scanPos - 1, 1) = ":" Then Exit Function
+    End If
+
+    If scanPos < textLength Then
+        If Mid$(text, scanPos + 1, 1) = ":" Then Exit Function
+    End If
+
+    IsInterpolationFormatSeparator = True
+End Function
+
+Private Sub SkipInterpolationFormatText( _
+    ByVal text As String, _
+    ByRef scanPos As Long, _
+    ByVal textLength As Long, _
+    ByVal interpolationEndBraceCount As Long)
+
+    Do While scanPos <= textLength
+        If Mid$(text, scanPos, 1) = "}" Then
+            If CountConsecutiveCharacter(text, scanPos, "}") >= interpolationEndBraceCount Then
+                Exit Sub
+            End If
+        End If
+
+        scanPos = scanPos + 1
+    Loop
+End Sub
+
+Private Function CountConsecutiveCharacter( _
+    ByVal text As String, _
+    ByVal startPos As Long, _
+    ByVal targetChar As String) As Long
+
+    Dim scanPos As Long
+
+    If Len(targetChar) <> 1 Then Exit Function
+
+    scanPos = startPos
+    Do While scanPos <= Len(text)
+        If Mid$(text, scanPos, 1) <> targetChar Then Exit Do
+        CountConsecutiveCharacter = CountConsecutiveCharacter + 1
+        scanPos = scanPos + 1
+    Loop
+End Function
 
 Private Function IsFunctionPrefixCandidate( _
     ByVal text As String, _
