@@ -21,6 +21,7 @@ End Type
 
 Private mUiOptions As EscapePartsMarkingUiOptions
 
+' 目的: フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路でエスケープ箇所を装飾する。
 Public Sub RunMainWithUiOptions(ByRef options As EscapePartsMarkingUiOptions)
     ClearUiOptions
     mUiOptions = options
@@ -31,6 +32,7 @@ Public Sub RunMainWithUiOptions(ByRef options As EscapePartsMarkingUiOptions)
     ClearUiOptions
 End Sub
 
+' 目的: フォームとCONFIGで共有するエスケープ箇所マーキングの既定設定を作成する。
 Public Function CreateEscapePartsMarkingUiOptionsForForm() As EscapePartsMarkingUiOptions
     Dim defaults As EscapePartsMarkingUiOptions
 
@@ -52,6 +54,7 @@ Public Function CreateEscapePartsMarkingUiOptionsForForm() As EscapePartsMarking
     CreateEscapePartsMarkingUiOptionsForForm = defaults
 End Function
 
+' 目的: 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.TargetWorkbookPath = vbNullString
@@ -77,6 +80,7 @@ End Sub
 ' 前提:
 '  - モジュール先頭の ESCAPE_TARGET_PREFIXES_CSV にエスケープ関数（例: pg_escape_string, sqlS, sqlN）を列挙していること
 '============================================================
+' 目的: 対象ブック選択、対象シート走査、装飾、保存までの処理全体を統括する。
 Public Sub RunMain()
     Dim targetPath As String
     targetPath = PickExcelFilePath()
@@ -163,6 +167,7 @@ End Sub
 ' - B列を走査して sqlX(...) / DbHelper.sqlX(...) を装飾（複数行跨ぎ対応）
 ' - ヒット行のC列に固定メッセージ＆赤字
 '============================================================
+' 目的: 一つのA1-1-1シートについて、対象関数装飾とA列のみ行の塗りつぶしを適用する。
 Private Sub ProcessOneSheet(ByVal ws As Worksheet, ByVal prefixes As Collection, ByVal hitMessage As String)
     ' A/B列の最終行を取得（どちらにもデータが無ければスキップ）
     Dim lastRowA As Long
@@ -195,6 +200,7 @@ Private Sub ProcessOneSheet(ByVal ws As Worksheet, ByVal prefixes As Collection,
     MarkSqlPartsInRows ws, prefixes, hitMessage, FIRST_SCAN_ROW, sourceValues
 End Sub
 
+' 目的: B列の複数行を仮想ソースとして解析し、対象関数呼び出しへ書式を設定する。
 Private Sub MarkSqlPartsInRows( _
     ByVal ws As Worksheet, _
     ByVal prefixes As Collection, _
@@ -241,6 +247,7 @@ Private Sub MarkSqlPartsInRows( _
     Next prefixIndex
 End Sub
 
+' 目的: エラー値を除外し、装飾解析に使えるB列セル文字列を返す。
 Private Function GetMarkingCellText(ByVal value As Variant) As String
     If IsError(value) Then Exit Function
     If IsNull(value) Then Exit Function
@@ -249,6 +256,7 @@ Private Function GetMarkingCellText(ByVal value As Variant) As String
     GetMarkingCellText = CStr(value)
 End Function
 
+' 目的: C#の文字列・コメントを除外し、実行コードとして検索可能な文字位置だけを記録する。
 Private Sub BuildExecutableCodePositionMap( _
     ByVal text As String, _
     ByRef executableCodePositions() As Boolean)
@@ -263,6 +271,7 @@ Private Sub BuildExecutableCodePositionMap( _
     ScanCSharpCode text, scanPos, textLength, executableCodePositions, 0
 End Sub
 
+' 目的: 通常コードを走査し、コメント、通常文字列、補間文字列、raw文字列をそれぞれの規則で読み飛ばす。
 Private Sub ScanCSharpCode( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -338,6 +347,7 @@ Private Sub ScanCSharpCode( _
     Loop
 End Sub
 
+' 目的: 現在位置がC#文字列開始なら種類を判別し、対応する終端まで走査位置を進める。
 Private Function TrySkipCSharpStringLiteral( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -419,6 +429,7 @@ Private Function TrySkipCSharpStringLiteral( _
     End If
 End Function
 
+' 目的: 補間文字列の本文を除外しつつ、波括弧内の式だけを再帰的なコードとして解析する。
 Private Sub ScanInterpolatedQuotedString( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -471,6 +482,7 @@ Private Sub ScanInterpolatedQuotedString( _
     Loop
 End Sub
 
+' 目的: 引用符数とドル数に従ってraw文字列を走査し、有効な補間式だけをコードとして扱う。
 Private Sub ScanRawString( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -517,6 +529,7 @@ Private Sub ScanRawString( _
     Loop
 End Sub
 
+' 目的: エスケープと逐語文字列の二重引用符を考慮し、通常文字列または文字リテラルを読み飛ばす。
 Private Sub SkipQuotedString( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -556,6 +569,7 @@ Private Sub SkipQuotedString( _
     Loop
 End Sub
 
+' 目的: 改行直前までをコード対象外として、C#の行コメントを読み飛ばす。
 Private Sub SkipCSharpLineComment(ByVal text As String, ByRef scanPos As Long, ByVal textLength As Long)
     Do While scanPos <= textLength
         If Mid$(text, scanPos, 1) = vbCr Then
@@ -573,6 +587,7 @@ Private Sub SkipCSharpLineComment(ByVal text As String, ByRef scanPos As Long, B
     Loop
 End Sub
 
+' 目的: 閉じ記号またはソース末尾までをコード対象外として、ブロックコメントを読み飛ばす。
 Private Sub SkipCSharpBlockComment(ByVal text As String, ByRef scanPos As Long, ByVal textLength As Long)
     scanPos = scanPos + 2
 
@@ -588,6 +603,7 @@ Private Sub SkipCSharpBlockComment(ByVal text As String, ByRef scanPos As Long, 
     Loop
 End Sub
 
+' 目的: 補間式のトップレベルにあるコロンだけを、書式指定開始として判定する。
 Private Function IsInterpolationFormatSeparator( _
     ByVal text As String, _
     ByVal scanPos As Long, _
@@ -612,6 +628,7 @@ Private Function IsInterpolationFormatSeparator( _
     IsInterpolationFormatSeparator = True
 End Function
 
+' 目的: 補間式の書式指定部分を除外し、対応する閉じ波括弧まで走査位置を進める。
 Private Sub SkipInterpolationFormatText( _
     ByVal text As String, _
     ByRef scanPos As Long, _
@@ -629,6 +646,7 @@ Private Sub SkipInterpolationFormatText( _
     Loop
 End Sub
 
+' 目的: raw文字列の区切り判定に使うため、同一文字が連続する長さを数える。
 Private Function CountConsecutiveCharacter( _
     ByVal text As String, _
     ByVal startPos As Long, _
@@ -646,6 +664,7 @@ Private Function CountConsecutiveCharacter( _
     Loop
 End Function
 
+' 目的: 対象関数名が別識別子の一部でなく、直後に呼出し括弧があるか判定する。
 Private Function IsFunctionPrefixCandidate( _
     ByVal text As String, _
     ByRef executableCodePositions() As Boolean, _
@@ -665,6 +684,7 @@ Private Function IsFunctionPrefixCandidate( _
     IsFunctionPrefixCandidate = True
 End Function
 
+' 目的: 複数行にまたがる引数も含め、一つの対象関数名の全呼出し範囲を装飾する。
 Private Function MarkAllOccurrencesForOnePrefixAcrossRows( _
     ByVal ws As Worksheet, _
     ByVal virtualText As String, _
@@ -715,6 +735,7 @@ Private Function MarkAllOccurrencesForOnePrefixAcrossRows( _
     MarkAllOccurrencesForOnePrefixAcrossRows = hit
 End Function
 
+' 目的: 仮想ソース上の範囲を各B列セルへ分割し、文字単位の書式として適用する。
 Private Sub ApplyFormattedVirtualRange( _
     ByVal ws As Worksheet, _
     ByRef rowTexts() As String, _
@@ -762,6 +783,7 @@ Private Sub ApplyFormattedVirtualRange( _
     Next rowIndex
 End Sub
 
+' 目的: 範囲端計算で使う二つのLong値の大きい方を返す。
 Private Function MaxLong(ByVal leftValue As Long, ByVal rightValue As Long) As Long
     If leftValue >= rightValue Then
         MaxLong = leftValue
@@ -770,6 +792,7 @@ Private Function MaxLong(ByVal leftValue As Long, ByVal rightValue As Long) As L
     End If
 End Function
 
+' 目的: 範囲端計算で使う二つのLong値の小さい方を返す。
 Private Function MinLong(ByVal leftValue As Long, ByVal rightValue As Long) As Long
     If leftValue <= rightValue Then
         MinLong = leftValue
@@ -778,11 +801,13 @@ Private Function MinLong(ByVal leftValue As Long, ByVal rightValue As Long) As L
     End If
 End Function
 
+' 目的: A列だけに値があるという塗りつぶし対象条件を、配列値から判定する。
 Private Function ShouldFillOnlyAValueRowValues(ByVal valueA As Variant, ByVal valueB As Variant) As Boolean
     ShouldFillOnlyAValueRowValues = HasCellValueForOnlyARowRule(valueA) And _
                                    (Not HasCellValueForOnlyARowRule(valueB))
 End Function
 
+' 目的: 設定されたNone・Left・Right・Bothに従い、A列だけの行へ塗りつぶしを適用する。
 Private Sub ApplyOnlyAValueRowFill(ByVal ws As Worksheet, ByVal rowNumber As Long, ByVal fillColor As Long, ByVal fillTargetOption As String)
     Select Case fillTargetOption
         Case "LEFT"
@@ -797,6 +822,7 @@ Private Sub ApplyOnlyAValueRowFill(ByVal ws As Worksheet, ByVal rowNumber As Lon
     End Select
 End Sub
 
+' 目的: UI値またはソース定数を正規化し、塗りつぶす列の選択肢を確定する。
 Private Function ResolveOnlyAValueRowFillTargetOption() As String
     Dim normalized As String
 
@@ -810,10 +836,12 @@ Private Function ResolveOnlyAValueRowFillTargetOption() As String
     End Select
 End Function
 
+' 目的: UI値またはソース定数のカラーコードから、実際に適用するExcel色値を決定する。
 Private Function ResolveOnlyAValueRowFillColor() As Long
     ResolveOnlyAValueRowFillColor = HexColorTextToColorLongOrDefault(ResolveOnlyAValueRowFillColorHexRaw(), RGB(166, 166, 166))
 End Function
 
+' 目的: Empty・空文字・空白だけを未入力とし、A列のみ行判定用の実値有無を返す。
 Private Function HasCellValueForOnlyARowRule(ByVal value As Variant) As Boolean
     If IsError(value) Then
         HasCellValueForOnlyARowRule = True
@@ -829,6 +857,7 @@ Private Function HasCellValueForOnlyARowRule(ByVal value As Variant) As Boolean
     End If
 End Function
 
+' 目的: カラーコードをExcel色値へ変換し、不正値なら既定色を返す。
 Private Function HexColorTextToColorLongOrDefault(ByVal rawHex As String, ByVal defaultColor As Long) As Long
     Dim t As String
     Dim redPart As Long
@@ -881,6 +910,7 @@ End Function
 ' - sqlS(xxx + trim(yyy) + "zzz") のようなネスト括弧に対応する
 ' - 文字列やコメント内の括弧はコード位置マップで無視する
 '============================================================
+' 目的: 文字列とネスト括弧を考慮し、対象関数呼び出しに対応する閉じ括弧を検索する。
 Private Function FindMatchingClosingParen( _
     ByVal text As String, _
     ByRef executableCodePositions() As Boolean, _
@@ -932,6 +962,7 @@ End Function
 ' - prefix の直前が "." かどうかを見る
 ' - "." の左側にある識別子 [A-Za-z0-9_] を逆向きにたどる
 '============================================================
+' 目的: 関数呼び出し後の添字記法を考慮し、装飾を開始する文字位置を決める。
 Private Function ResolveFormatStartPosition(ByVal text As String, ByVal prefixPos As Long) As Long
     ResolveFormatStartPosition = prefixPos
 
@@ -969,6 +1000,7 @@ End Function
 '   helper_01
 '   mDb
 '============================================================
+' 目的: 英数字とアンダースコアをC#識別子構成文字として判定する。
 Private Function IsIdentifierChar(ByVal ch As String) As Boolean
     If Len(ch) <> 1 Then Exit Function
 
@@ -988,6 +1020,7 @@ End Function
 ' モジュール先頭のCSV定数から prefix を読み込む
 ' - 追加したい場合は ESCAPE_TARGET_PREFIXES_CSV へ追記
 '============================================================
+' 目的: 編集しやすいカンマ区切り設定を、空欄と重複を除いた対象関数一覧へ変換する。
 Private Function LoadPrefixesFromCode() As Collection
     Dim prefixes As New Collection
     Dim rawPrefixes As String
@@ -1011,6 +1044,7 @@ End Function
 '============================================================
 ' ファイル選択ダイアログ（Excelファイル用）
 '============================================================
+' 目的: UI指定があればそれを使い、なければソース定数の完了メッセージを返す。
 Private Function ResolveCompletionMessage() As String
     If mUiOptions.Enabled And mUiOptions.UseCompletionMessage Then
         ResolveCompletionMessage = CStr(mUiOptions.completionMessage)
@@ -1019,6 +1053,7 @@ Private Function ResolveCompletionMessage() As String
     End If
 End Function
 
+' 目的: UI指定があればそれを使い、なければソース定数の対象関数一覧を返す。
 Private Function ResolveEscapeTargetPrefixesCsvRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseEscapeTargetPrefixesCsv Then
         ResolveEscapeTargetPrefixesCsvRaw = CStr(mUiOptions.escapeTargetPrefixesCsv)
@@ -1027,6 +1062,7 @@ Private Function ResolveEscapeTargetPrefixesCsvRaw() As String
     End If
 End Function
 
+' 目的: UI指定があればそれを使い、なければソース定数の塗りつぶし対象を返す。
 Private Function ResolveOnlyAValueRowFillTargetRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillTarget Then
         ResolveOnlyAValueRowFillTargetRaw = CStr(mUiOptions.onlyAValueRowFillTarget)
@@ -1035,6 +1071,7 @@ Private Function ResolveOnlyAValueRowFillTargetRaw() As String
     End If
 End Function
 
+' 目的: UI指定があればそれを使い、なければソース定数の塗りつぶし色を返す。
 Private Function ResolveOnlyAValueRowFillColorHexRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseOnlyAValueRowFillColorHex Then
         ResolveOnlyAValueRowFillColorHexRaw = CStr(mUiOptions.onlyAValueRowFillColorHex)
@@ -1043,6 +1080,7 @@ Private Function ResolveOnlyAValueRowFillColorHexRaw() As String
     End If
 End Function
 
+' 目的: 装飾対象となるExcelブックをファイル選択ダイアログから取得する。
 Private Function PickExcelFilePath() As String
     Dim fd As Object
 
