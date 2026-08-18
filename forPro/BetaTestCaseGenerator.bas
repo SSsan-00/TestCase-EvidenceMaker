@@ -55,7 +55,7 @@ End Type
 
 Private mUiOptions As BetaTestCaseUiOptions
 
-' 目的: フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路でテストケース生成を行う。
+' フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路でテストケース生成を行う。
 Public Sub RunMainWithUiOptions(ByRef options As BetaTestCaseUiOptions)
     ClearUiOptions
     mUiOptions = options
@@ -66,7 +66,7 @@ Public Sub RunMainWithUiOptions(ByRef options As BetaTestCaseUiOptions)
     ClearUiOptions
 End Sub
 
-' 目的: フォームとCONFIGで共有するテストケース生成の既定設定を作成する。
+' フォームとCONFIGで共有するテストケース生成の既定設定を作成する。
 Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
     Dim defaults As BetaTestCaseUiOptions
 
@@ -78,7 +78,7 @@ Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
     CreateBetaTestCaseUiOptionsForForm = defaults
 End Function
 
-' 目的: 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
+' 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.featureId = vbNullString
@@ -90,7 +90,7 @@ End Sub
 ' 実行入口
 ' ============================================================
 
-' 目的: 機能連番の検証、REFER収集、テンプレート複製、保存までの処理全体を統括する。
+' 機能連番の検証、REFER収集、テンプレート複製、保存までの処理全体を統括する。
 Public Sub RunMain()
     On Error GoTo ErrorHandler
 
@@ -219,7 +219,7 @@ End Sub
 ' 入力・出力パス決定
 ' ============================================================
 
-' 目的: REFER検索に使用する機能連番を、UI設定または入力ダイアログから取得する。
+' REFER検索に使用する機能連番を、UI設定または入力ダイアログから取得する。
 Private Function PromptFeatureId() As String
     ' 機能連番を InputBox で入力させる。
     ' キャンセルまたは空文字は空で返し、呼び出し元で中断判断する。
@@ -234,7 +234,7 @@ Private Function PromptFeatureId() As String
     PromptFeatureId = Trim$(s)
 End Function
 
-' 目的: 機能連番がS99-999-99形式かつ半角数字だけで構成されるか検証する。
+' 機能連番がS99-999-99形式かつ半角数字だけで構成されるか検証する。
 Private Function IsValidFeatureIdFormat(ByVal featureId As String) As Boolean
     IsValidFeatureIdFormat = False
 
@@ -250,7 +250,7 @@ Private Function IsValidFeatureIdFormat(ByVal featureId As String) As Boolean
     IsValidFeatureIdFormat = True
 End Function
 
-' 目的: 指定範囲の各文字が0から9の半角数字かを判定する。
+' 指定範囲の各文字が0から9の半角数字かを判定する。
 Private Function IsAsciiDigitSequence(ByVal text As String) As Boolean
     Dim i As Long
     Dim ch As String
@@ -265,7 +265,7 @@ Private Function IsAsciiDigitSequence(ByVal text As String) As Boolean
     IsAsciiDigitSequence = True
 End Function
 
-' 目的: UI指定または既定名を基に、保存先とファイル重複時の扱いを決定する。
+' UI指定または既定名を基に、保存先とファイル重複時の扱いを決定する。
 Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As String) As String
     ' 1) ThisWorkbook が保存済みなら同フォルダに出力
     ' 2) 未保存なら SaveAs ダイアログで保存先を選ばせる
@@ -302,7 +302,7 @@ Private Function DecideOutputPath(ByVal macroWb As Workbook, ByVal alpha As Stri
     DecideOutputPath = BuildUniquePath(desiredPath)
 End Function
 
-' 目的: 名前を付けて保存ダイアログを表示し、ユーザーが選んだ出力パスを取得する。
+' 名前を付けて保存ダイアログを表示し、ユーザーが選んだ出力パスを取得する。
 Private Function PromptOutputPathByDialog(ByVal defaultFileName As String) As String
     ' ThisWorkbook 未保存時の保存先選択ダイアログ。
     Dim pickedPath As Variant
@@ -320,7 +320,7 @@ Private Function PromptOutputPathByDialog(ByVal defaultFileName As String) As St
     PromptOutputPathByDialog = EnsureXlsxExtension(CStr(pickedPath))
 End Function
 
-' 目的: 既存ファイルと開いているブックを避け、連番付きの未使用パスを生成する。
+' 既存ファイルと開いているブックを避け、連番付きの未使用パスを生成する。
 Private Function BuildUniquePath(ByVal desiredPath As String) As String
     ' 同名ファイルがある場合は _001 形式で連番を付与する。
     ' 既に開いているブック名とも衝突しないようにする。
@@ -362,7 +362,7 @@ Private Function BuildUniquePath(ByVal desiredPath As String) As String
               "連番付きファイル名を決定できませんでした（上限: 9999）。"
 End Function
 
-' 目的: 出力パスの末尾を.xlsxへ統一し、SaveAs形式との不一致を防ぐ。
+' 出力パスの末尾を.xlsxへ統一し、SaveAs形式との不一致を防ぐ。
 Private Function EnsureXlsxExtension(ByVal filePath As String) As String
     ' 指定パスの拡張子を .xlsx に正規化する。
     Dim lastSepPos As Long
@@ -387,7 +387,7 @@ Private Function EnsureXlsxExtension(ByVal filePath As String) As String
     End If
 End Function
 
-' 目的: フルパスを比較し、保存先ブックが現在のExcelで開かれているか判定する。
+' フルパスを比較し、保存先ブックが現在のExcelで開かれているか判定する。
 Private Function IsWorkbookAlreadyOpen(ByVal workbookPath As String) As Boolean
     ' フルパス一致で、既に開いているブックがあるかを判定。
     Dim wb As Workbook
@@ -404,7 +404,7 @@ End Function
 ' REFER 探索（操作X）
 ' ============================================================
 
-' 目的: REFERを配列で走査し、機能連番を含むα・β・γの組を出現順に収集する。
+' REFERを配列で走査し、機能連番を含むα・β・γの組を出現順に収集する。
 Private Function FindReferMatches( _
     ByVal referWs As Worksheet, _
     ByVal featureId As String) As Collection
@@ -505,7 +505,7 @@ ContinueRow:
     Set FindReferMatches = results
 End Function
 
-' 目的: REFER走査のセルアクセスを減らすため、指定列範囲を二次元配列で読み込む。
+' REFER走査のセルアクセスを減らすため、指定列範囲を二次元配列で読み込む。
 Private Function ReadColumnValues( _
     ByVal ws As Worksheet, _
     ByVal columnIndex As Long, _
@@ -528,7 +528,7 @@ Private Function ReadColumnValues( _
         ReadColumnValues = rawValues
     End If
 End Function
-' 目的: 複数一致から代表αを決定し、不一致が混在する場合は警告文も組み立てる。
+' 複数一致から代表αを決定し、不一致が混在する場合は警告文も組み立てる。
 Private Function ResolvePrimaryAlpha( _
     ByVal matches As Collection, _
     ByRef warningMessage As String) As String
@@ -572,7 +572,7 @@ End Function
 ' 出力ブック構築
 ' ============================================================
 
-' 目的: テンプレート群を必要数複製し、共通・個別・参考・ソースシートを構成する。
+' テンプレート群を必要数複製し、共通・個別・参考・ソースシートを構成する。
 Private Function BuildOutputWorkbook( _
     ByVal macroWb As Workbook, _
     ByVal matches As Collection, _
@@ -644,7 +644,7 @@ Private Function BuildOutputWorkbook( _
     Set BuildOutputWorkbook = outputWb
 End Function
 
-' 目的: 作成した共通・個別シートへα、機能連番、γを所定セルに設定する。
+' 作成した共通・個別シートへα、機能連番、γを所定セルに設定する。
 Private Sub FillCaseSheet( _
     ByVal targetWs As Worksheet, _
     ByVal beta As String, _
@@ -656,7 +656,7 @@ Private Sub FillCaseSheet( _
     targetWs.Range(TARGET_FEATURE_ID_CELL).value = featureId
 End Sub
 
-' 目的: 現行ソースシートへ機能連番を書き込み、後続の条件分岐チェックと関連付ける。
+' 現行ソースシートへ機能連番を書き込み、後続の条件分岐チェックと関連付ける。
 Private Sub FillSourceSheet( _
     ByVal sourceWs As Worksheet, _
     ByVal gamma As String)
@@ -665,7 +665,7 @@ Private Sub FillSourceSheet( _
     sourceWs.Range(TARGET_GAMMA_CELL).value = gamma
 End Sub
 
-' 目的: 指定テンプレートを出力ブックへ複製し、一意なシート名を付けて返す。
+' 指定テンプレートを出力ブックへ複製し、一意なシート名を付けて返す。
 Private Function CopyTemplateSheet( _
     ByVal templateWs As Worksheet, _
     ByVal targetWb As Workbook, _
@@ -697,7 +697,7 @@ RenameError:
               "安全化後: " & safeName
 End Function
 
-' 目的: 新規ブックの種シートだけを後で識別できるよう、初期名を記録する。
+' 新規ブックの種シートだけを後で識別できるよう、初期名を記録する。
 Private Function CaptureInitialSheetNames(ByVal wb As Workbook) As Collection
     ' 新規ブック作成直後に存在したシート名を保持する。
     ' Excel設定で初期シートが複数でも、最後に確実に除去できるようにする。
@@ -712,7 +712,7 @@ Private Function CaptureInitialSheetNames(ByVal wb As Workbook) As Collection
     Set CaptureInitialSheetNames = names
 End Function
 
-' 目的: テンプレート複製後に不要となった新規ブックの種シートを削除する。
+' テンプレート複製後に不要となった新規ブックの種シートを削除する。
 Private Sub RemoveSeedSheetsIfNeeded(ByVal wb As Workbook, ByVal seedSheetNames As Collection)
     ' 新規ブック作成時の初期シート（Sheet1 など）を削除する。
     ' 初期シートが複数ある設定でも全て除去する。
@@ -734,7 +734,7 @@ Private Sub RemoveSeedSheetsIfNeeded(ByVal wb As Workbook, ByVal seedSheetNames 
     Next i
 End Sub
 
-' 目的: 保存後に開いたとき先頭シートが選択されるよう、ウィンドウ状態を整える。
+' 保存後に開いたとき先頭シートが選択されるよう、ウィンドウ状態を整える。
 Private Sub ActivateFirstWorksheetForOpenState(ByVal wb As Workbook)
     Dim firstWs As Worksheet
 
@@ -750,7 +750,7 @@ End Sub
 ' シート名安全化
 ' ============================================================
 
-' 目的: 正規化後の名前が重複する場合、31文字制限内で連番付き名称を生成する。
+' 正規化後の名前が重複する場合、31文字制限内で連番付き名称を生成する。
 Private Function MakeUniqueSheetName( _
     ByVal wb As Workbook, _
     ByVal desiredName As String) As String
@@ -784,7 +784,7 @@ Private Function MakeUniqueSheetName( _
               "一意なシート名を決定できませんでした: " & desiredName
 End Function
 
-' 目的: Excelの禁止文字と長さ制限に合わせて、候補シート名を安全な形式へ整える。
+' Excelの禁止文字と長さ制限に合わせて、候補シート名を安全な形式へ整える。
 Private Function NormalizeSheetName(ByVal rawName As String) As String
     ' 禁止文字置換 + 長さ制限 + 空文字回避
     Dim s As String
@@ -813,7 +813,7 @@ End Function
 ' 共通ユーティリティ
 ' ============================================================
 
-' 目的: 必須テンプレートまたはREFERシートを取得し、欠落時は用途付きで中断する。
+' 必須テンプレートまたはREFERシートを取得し、欠落時は用途付きで中断する。
 Private Function GetWorksheetOrRaise( _
     ByVal wb As Workbook, _
     ByVal sheetName As String, _
@@ -826,7 +826,7 @@ Private Function GetWorksheetOrRaise( _
     End If
 End Function
 
-' 目的: 大文字小文字を区別せず、指定名と完全一致するワークシートを検索する。
+' 大文字小文字を区別せず、指定名と完全一致するワークシートを検索する。
 Private Function FindWorksheetExact(ByVal wb As Workbook, ByVal sheetName As String) As Worksheet
     ' シート名完全一致。見つからない場合は Nothing。
     On Error Resume Next
@@ -834,7 +834,7 @@ Private Function FindWorksheetExact(ByVal wb As Workbook, ByVal sheetName As Str
     On Error GoTo 0
 End Function
 
-' 目的: 列記号をCellsで安全に使える1始まりの列番号へ変換する。
+' 列記号をCellsで安全に使える1始まりの列番号へ変換する。
 Private Function ColumnLetterToIndex( _
     ByVal columnLetter As String, _
     Optional ByVal labelForError As String = vbNullString) As Long
@@ -872,7 +872,7 @@ Private Function ColumnLetterToIndex( _
     End If
 End Function
 
-' 目的: シート名とセル番地を含む、REFER入力不正エラー共通の位置情報を組み立てる。
+' シート名とセル番地を含む、REFER入力不正エラー共通の位置情報を組み立てる。
 Private Function BuildErrorLabelPrefix(ByVal labelText As String) As String
     If Len(Trim$(labelText)) = 0 Then
         BuildErrorLabelPrefix = vbNullString
@@ -881,7 +881,7 @@ Private Function BuildErrorLabelPrefix(ByVal labelText As String) As String
     End If
 End Function
 
-' 目的: 保存名作成に使うため、ファイル名の最後の拡張子だけを除去する。
+' 保存名作成に使うため、ファイル名の最後の拡張子だけを除去する。
 Private Function RemoveExtension(ByVal fileNameText As String) As String
     ' "foo.php" -> "foo"
     ' "foo.bar.php" -> "foo.bar"

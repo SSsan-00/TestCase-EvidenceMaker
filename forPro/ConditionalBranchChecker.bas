@@ -43,7 +43,7 @@ Private mUiOptions As ConditionalBranchCheckerUiOptions
 Private mTemplateSnapshotSheet As Worksheet
 Private mPreAllocatedWritableLastRow As Long
 
-' 目的: フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路で条件分岐チェックを行う。
+' フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路で条件分岐チェックを行う。
 Public Sub RunMainWithUiOptions(ByRef options As ConditionalBranchCheckerUiOptions)
     ClearUiOptions
     mUiOptions = options
@@ -54,7 +54,7 @@ Public Sub RunMainWithUiOptions(ByRef options As ConditionalBranchCheckerUiOptio
     ClearUiOptions
 End Sub
 
-' 目的: フォームとCONFIGで共有する条件分岐チェックの既定設定を作成する。
+' フォームとCONFIGで共有する条件分岐チェックの既定設定を作成する。
 Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalBranchCheckerUiOptions
     Dim defaults As ConditionalBranchCheckerUiOptions
 
@@ -73,7 +73,7 @@ Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalB
     CreateConditionalBranchCheckerUiOptionsForForm = defaults
 End Function
 
-' 目的: 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
+' 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.featureName = vbNullString
@@ -88,7 +88,7 @@ Private Sub ClearUiOptions()
     mUiOptions.markFillColorHex = vbNullString
 End Sub
 
-' 目的: 対象ブック特定、ソース解析、マーキング、個別シート出力、保存までを統括する。
+' 対象ブック特定、ソース解析、マーキング、個別シート出力、保存までを統括する。
 Public Sub RunMain()
     On Error GoTo ErrorHandler
 
@@ -176,7 +176,7 @@ ErrorHandler:
            Err.Number & " : " & Err.Description, vbExclamation
 End Sub
 
-' 目的: 対象シート検索に使う機能名を、UI設定または入力ダイアログから取得する。
+' 対象シート検索に使う機能名を、UI設定または入力ダイアログから取得する。
 Private Function PromptFeatureName() As String
     ' 機能名の入力を受け取り、前後空白を除去して返す
     Dim inputValue As String
@@ -190,7 +190,7 @@ Private Function PromptFeatureName() As String
     PromptFeatureName = Trim$(inputValue)
 End Function
 
-' 目的: 条件分岐を走査するExcelブックをファイル選択ダイアログから取得する。
+' 条件分岐を走査するExcelブックをファイル選択ダイアログから取得する。
 Private Function SelectTargetWorkbookPath() As String
     '.xlsx を選択させる簡易ダイアログ
     Dim selectedPath As Variant
@@ -211,7 +211,7 @@ Private Function SelectTargetWorkbookPath() As String
     End If
 End Function
 
-' 目的: 対象ブックを開き、既に開かれている場合も同じWorkbookを再利用する。
+' 対象ブックを開き、既に開かれている場合も同じWorkbookを再利用する。
 Private Function OpenTargetWorkbook(ByVal workbookPath As String) As Workbook
     ' 既に開いている場合は既存のWorkbookを返し、未オープンなら開く
     Dim wb As Workbook
@@ -233,7 +233,7 @@ Private Function OpenTargetWorkbook(ByVal workbookPath As String) As Workbook
         ReadOnly:=False)
 End Function
 
-' 目的: 機能名と現行ソース命名規則から、解析対象となるシートを検索する。
+' 機能名と現行ソース命名規則から、解析対象となるシートを検索する。
 Private Function FindCurrentSourceSheet(ByVal targetWorkbook As Workbook, ByVal featureName As String) As Worksheet
     ' 現行ソースシートの判定ルール:
     ' - 名前に「現行ソース」を含むシートを候補
@@ -273,7 +273,7 @@ Private Function FindCurrentSourceSheet(ByVal targetWorkbook As Workbook, ByVal 
     ' 複数候補があり、機能名一致がない場合は未確定としてNothingを返す
 End Function
 
-' 目的: 現行ソースシート名から抽出した機能名が入力値と完全一致するか判定する。
+' 現行ソースシート名から抽出した機能名が入力値と完全一致するか判定する。
 Private Function IsCurrentSourceFeatureExactMatch(ByVal sheetName As String, ByVal featureName As String) As Boolean
     ' 現行ソースシート名から機能名相当部分を取り出し、入力機能名と完全一致で比較する
     ' 例: 現行ソース（PHP）＜機能名＞
@@ -310,7 +310,7 @@ Private Function IsCurrentSourceFeatureExactMatch(ByVal sheetName As String, ByV
     End If
 End Function
 
-' 目的: 現行ソースの命名規則から比較対象となる機能名部分を取り出す。
+' 現行ソースの命名規則から比較対象となる機能名部分を取り出す。
 Private Function ExtractFeatureNameFromCurrentSourceSheetName(ByVal sheetName As String) As String
     ' 例:
     ' - 現行ソース（PHP）＜機能A＞ -> 機能A
@@ -341,7 +341,7 @@ Private Function ExtractFeatureNameFromCurrentSourceSheetName(ByVal sheetName As
     ExtractFeatureNameFromCurrentSourceSheetName = Trim$(token)
 End Function
 
-' 目的: 開始・終了マーカーに囲まれた文字列だけを安全に抽出する。
+' 開始・終了マーカーに囲まれた文字列だけを安全に抽出する。
 Private Function ExtractWrappedValue(ByVal sourceText As String, ByVal openToken As String, ByVal closeToken As String) As String
     Dim openPos As Long
     Dim closePos As Long
@@ -357,7 +357,7 @@ Private Function ExtractWrappedValue(ByVal sourceText As String, ByVal openToken
     ExtractWrappedValue = Trim$(Mid$(sourceText, openPos + Len(openToken), closePos - openPos - Len(openToken)))
 End Function
 
-' 目的: シート名解析時に不要な先頭区切り文字を取り除く。
+' シート名解析時に不要な先頭区切り文字を取り除く。
 Private Function TrimLeadingSeparators(ByVal valueText As String) As String
     Dim textBuffer As String
     textBuffer = valueText
@@ -374,7 +374,7 @@ Private Function TrimLeadingSeparators(ByVal valueText As String) As String
     TrimLeadingSeparators = textBuffer
 End Function
 
-' 目的: シート名解析時に不要な末尾区切り文字を取り除く。
+' シート名解析時に不要な末尾区切り文字を取り除く。
 Private Function TrimTrailingSeparators(ByVal valueText As String) As String
     Dim textBuffer As String
     textBuffer = valueText
@@ -391,7 +391,7 @@ Private Function TrimTrailingSeparators(ByVal valueText As String) As String
     TrimTrailingSeparators = textBuffer
 End Function
 
-' 目的: 値全体を囲む対応した括弧だけを一組取り除く。
+' 値全体を囲む対応した括弧だけを一組取り除く。
 Private Function UnwrapBracketPair(ByVal valueText As String) As String
     Dim textBuffer As String
     textBuffer = valueText
@@ -411,7 +411,7 @@ Private Function UnwrapBracketPair(ByVal valueText As String) As String
     UnwrapBracketPair = textBuffer
 End Function
 
-' 目的: 機能名に対応する個別テストケースシートを命名規則から検索する。
+' 機能名に対応する個別テストケースシートを命名規則から検索する。
 Private Function FindIndividualSheet(ByVal targetWorkbook As Workbook, ByVal featureName As String) As Worksheet
     ' 個別シート名: 「【個別】」 + 機能名（完全一致）
     Dim targetSheetName As String
@@ -427,7 +427,7 @@ Private Function FindIndividualSheet(ByVal targetWorkbook As Workbook, ByVal fea
     Next ws
 End Function
 
-' 目的: UI上書きを優先し、解析結果を個別シートへ書き込むか決定する。
+' UI上書きを優先し、解析結果を個別シートへ書き込むか決定する。
 Private Function IsWriteIndividualSheetEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideWriteIndividualSheetEnabled Then
         IsWriteIndividualSheetEnabled = mUiOptions.writeIndividualSheetEnabled
@@ -436,7 +436,7 @@ Private Function IsWriteIndividualSheetEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、非Function行の識別子へハイフンを付けるか決定する。
+' UI上書きを優先し、非Function行の識別子へハイフンを付けるか決定する。
 Private Function IsMarkNonFunctionLineWithDashEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideMarkNonFunctionLineWithDash Then
         IsMarkNonFunctionLineWithDashEnabled = mUiOptions.markNonFunctionLineWithDash
@@ -445,7 +445,7 @@ Private Function IsMarkNonFunctionLineWithDashEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、現行ソースのマーキングセルを塗りつぶすか決定する。
+' UI上書きを優先し、現行ソースのマーキングセルを塗りつぶすか決定する。
 Private Function IsMarkFillEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideMarkFillEnabled Then
         IsMarkFillEnabled = mUiOptions.markFillEnabled
@@ -454,7 +454,7 @@ Private Function IsMarkFillEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI指定があればそれを使い、なければソース定数のマーキング色を返す。
+' UI指定があればそれを使い、なければソース定数のマーキング色を返す。
 Private Function ResolveMarkFillColorHexRaw() As String
     If mUiOptions.Enabled And mUiOptions.UseMarkFillColorHex Then
         ResolveMarkFillColorHexRaw = CStr(mUiOptions.markFillColorHex)
@@ -463,12 +463,12 @@ Private Function ResolveMarkFillColorHexRaw() As String
     End If
 End Function
 
-' 目的: カラーコードを検証し、マーキングに使用するExcel色値を決定する。
+' カラーコードを検証し、マーキングに使用するExcel色値を決定する。
 Private Function ResolveMarkFillColor() As Long
     ResolveMarkFillColor = HexColorTextToColorLongOrDefault(ResolveMarkFillColorHexRaw(), RGB(255, 242, 204))
 End Function
 
-' 目的: 再実行で古い結果が残らないよう、現行ソースのマーキング列を初期化する。
+' 再実行で古い結果が残らないよう、現行ソースのマーキング列を初期化する。
 Private Sub ResetCurrentSourceMarkColumn(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
     If sourceSheet Is Nothing Then Exit Sub
     If lastRow <= 0 Then Exit Sub
@@ -479,7 +479,7 @@ Private Sub ResetCurrentSourceMarkColumn(ByVal sourceSheet As Worksheet, ByVal l
     End With
 End Sub
 
-' 目的: 再解析前に関数宣言行のA列へ残った星印を取り除く。
+' 再解析前に関数宣言行のA列へ残った星印を取り除く。
 Private Sub ResetCurrentSourceFunctionMarks(ByVal sourceSheet As Worksheet, ByVal lastRow As Long)
     Dim rowIndex As Long
     Dim markValues As Variant
@@ -495,7 +495,7 @@ Private Sub ResetCurrentSourceFunctionMarks(ByVal sourceSheet As Worksheet, ByVa
     Next rowIndex
 End Sub
 
-' 目的: 関数宣言行を明示するため、対応するA列セルを星印で上書きする。
+' 関数宣言行を明示するため、対応するA列セルを星印で上書きする。
 Private Sub ApplyFunctionDeclarationMark(ByVal sourceSheet As Worksheet, ByVal rowIndex As Long)
     If sourceSheet Is Nothing Then Exit Sub
     If rowIndex <= 0 Then Exit Sub
@@ -503,7 +503,7 @@ Private Sub ApplyFunctionDeclarationMark(ByVal sourceSheet As Worksheet, ByVal r
     sourceSheet.Cells(rowIndex, FUNCTION_MARK_COL).Value = FUNCTION_MARK_TEXT
 End Sub
 
-' 目的: 塗りつぶしオプションが有効な場合だけ、識別子を書いたセルへ指定色を適用する。
+' 塗りつぶしオプションが有効な場合だけ、識別子を書いたセルへ指定色を適用する。
 Private Sub ApplyMarkCellFill(ByVal targetCell As Range, ByVal fillColor As Long)
     If targetCell Is Nothing Then Exit Sub
 
@@ -511,7 +511,7 @@ Private Sub ApplyMarkCellFill(ByVal targetCell As Range, ByVal fillColor As Long
     targetCell.Interior.Color = fillColor
 End Sub
 
-' 目的: 構文イベントを出現順に採番し、Function行とその他の行を規則どおり現行ソースへ記録する。
+' 構文イベントを出現順に採番し、Function行とその他の行を規則どおり現行ソースへ記録する。
 Private Sub MarkCurrentSourceSheet( _
     ByVal sourceSheet As Worksheet, _
     ByRef sourceTextValues As Variant, _
@@ -584,7 +584,7 @@ ContinueMarkLoop:
     Next rowIndex
 End Sub
 
-' 目的: 最初のマーキング対象がFunctionかを判定し、採番を常にB1から始めるために使う。
+' 最初のマーキング対象がFunctionかを判定し、採番を常にB1から始めるために使う。
 Private Function IsFirstMarkTargetFunction( _
     ByRef sourceTextValues As Variant, _
     ByVal lastRow As Long) As Boolean
@@ -613,7 +613,7 @@ ContinueLeadingCheck:
     Next rowIndex
 End Function
 
-' 目的: 現行ソースB列を一括読込し、個別出力とマーキングで共有する構文イベント列を作る。
+' 現行ソースB列を一括読込し、個別出力とマーキングで共有する構文イベント列を作る。
 Private Function CollectSyntaxEvents( _
     ByRef sourceTextValues As Variant, _
     ByVal lastRow As Long) As Collection
@@ -621,7 +621,7 @@ Private Function CollectSyntaxEvents( _
     Set CollectSyntaxEvents = CollectSyntaxEventsInRange(sourceTextValues, 1, lastRow)
 End Function
 
-' 目的: 指定範囲を上から解析し、ネストしたswitchを含む構文イベントを出現順に収集する。
+' 指定範囲を上から解析し、ネストしたswitchを含む構文イベントを出現順に収集する。
 Private Function CollectSyntaxEventsInRange( _
     ByRef sourceTextValues As Variant, _
     ByVal startRow As Long, _
@@ -706,7 +706,7 @@ ContinueLoop:
     Set CollectSyntaxEventsInRange = events
 End Function
 
-' 目的: 収集済みイベントの必要行数を先に確保し、個別シートへ順序どおり書き込む。
+' 収集済みイベントの必要行数を先に確保し、個別シートへ順序どおり書き込む。
 Private Sub WriteIndividualSheet(ByVal individualSheet As Worksheet, ByVal syntaxEvents As Collection, ByVal firstTargetIsFunction As Boolean)
     ' 個別シートへ、仕様の書式で処理セクション/確認ブロックを書き込む
     On Error GoTo ErrorHandler
@@ -754,7 +754,7 @@ ErrorHandler:
     Err.Raise errorNumber, errorSource, errorDescription
 End Sub
 
-' 目的: Function区切りを維持しながら、通常分岐とswitch配下を再帰的に出力する。
+' Function区切りを維持しながら、通常分岐とswitch配下を再帰的に出力する。
 Private Sub WriteSyntaxEventsRecursive( _
     ByVal ws As Worksheet, _
     ByVal syntaxEvents As Collection, _
@@ -793,7 +793,7 @@ Private Sub WriteSyntaxEventsRecursive( _
     Next i
 End Sub
 
-' 目的: 各caseまたはdefault内の子イベントを、親switchの直後へbranch順に出力する。
+' 各caseまたはdefault内の子イベントを、親switchの直後へbranch順に出力する。
 Private Sub WriteSwitchChildEvents( _
     ByVal ws As Worksheet, _
     ByVal switchEvent As Collection, _
@@ -817,7 +817,7 @@ Private Sub WriteSwitchChildEvents( _
     Next branchItem
 End Sub
 
-' 目的: イベント列の先頭がFunction宣言かを判定し、初期セクション番号を決める。
+' イベント列の先頭がFunction宣言かを判定し、初期セクション番号を決める。
 Private Function IsFirstSyntaxEventFunction(ByVal syntaxEvents As Collection) As Boolean
     Dim firstEvent As Collection
 
@@ -828,7 +828,7 @@ Private Function IsFirstSyntaxEventFunction(ByVal syntaxEvents As Collection) As
     IsFirstSyntaxEventFunction = (UCase$(EventText(firstEvent, "Kind")) = "FUNCTION")
 End Function
 
-' 目的: Functionより先に分岐が現れた場合でも、B1の既定セクション見出しを作成する。
+' Functionより先に分岐が現れた場合でも、B1の既定セクション見出しを作成する。
 Private Sub EnsureSectionHeaderStarted( _
     ByVal ws As Worksheet, _
     ByRef sectionIndex As Long, _
@@ -841,7 +841,7 @@ Private Sub EnsureSectionHeaderStarted( _
     nextBlockStartRow = nextBlockStartRow + 1
 End Sub
 
-' 目的: イベント木を事前走査し、個別シート出力に必要な最終行を見積もる。
+' イベント木を事前走査し、個別シート出力に必要な最終行を見積もる。
 Private Function EstimateLastWriteRow( _
     ByVal syntaxEvents As Collection, _
     ByVal firstSectionIsFunction As Boolean) As Long
@@ -864,7 +864,7 @@ Private Function EstimateLastWriteRow( _
     EstimateLastWriteRow = maxRow
 End Function
 
-' 目的: 実書き込みと同じ規則でイベントをたどり、セクション番号と行位置を進める。
+' 実書き込みと同じ規則でイベントをたどり、セクション番号と行位置を進める。
 Private Sub AccumulateSyntaxEventLayout( _
     ByVal syntaxEvents As Collection, _
     ByRef sectionIndex As Long, _
@@ -923,7 +923,7 @@ Private Sub AccumulateSyntaxEventLayout( _
     Next i
 End Sub
 
-' 目的: switch配下の子イベントを再帰計算し、必要行数へ反映する。
+' switch配下の子イベントを再帰計算し、必要行数へ反映する。
 Private Sub AccumulateSwitchChildLayout( _
     ByVal switchEvent As Collection, _
     ByRef sectionIndex As Long, _
@@ -947,7 +947,7 @@ Private Sub AccumulateSwitchChildLayout( _
     Next branchItem
 End Sub
 
-' 目的: case数とdefault有無から、switch表本体が占有する最終行を算出する。
+' case数とdefault有無から、switch表本体が占有する最終行を算出する。
 Private Function EstimateSwitchBlockLastRow(ByVal eventItem As Collection, ByVal startRow As Long) As Long
     Dim caseValues As Collection
     Dim caseCount As Long
@@ -961,7 +961,7 @@ Private Function EstimateSwitchBlockLastRow(ByVal eventItem As Collection, ByVal
     EstimateSwitchBlockLastRow = startRow + 1 + (caseCount * 2)
 End Function
 
-' 目的: 見積最終行がテンプレート下端へ達する前に、必要行をまとめて挿入する。
+' 見積最終行がテンプレート下端へ達する前に、必要行をまとめて挿入する。
 Private Sub EnsureIndividualSheetWritableCapacity(ByVal ws As Worksheet, ByVal requiredLastRow As Long)
     ' 書き込み予定の最終行が分かっている場合、必要な行挿入を先にまとめて実施する
     Dim alphaRow As Long
@@ -993,7 +993,7 @@ Private Sub EnsureIndividualSheetWritableCapacity(ByVal ws As Worksheet, ByVal r
     Loop
 End Sub
 
-' 目的: 関数単位のセクション番号と関数名を、個別シートの見出し行へ設定する。
+' 関数単位のセクション番号と関数名を、個別シートの見出し行へ設定する。
 Private Sub WriteSectionHeader(ByVal ws As Worksheet, ByVal headerRow As Long, ByVal sectionIndex As Long, ByVal sectionName As String)
     ' 処理セクション見出し行の出力
     EnsureIndividualSheetWritableRow ws, headerRow
@@ -1003,7 +1003,7 @@ Private Sub WriteSectionHeader(ByVal ws As Worksheet, ByVal headerRow As Long, B
     ws.Range("M" & CStr(headerRow)).value = "処理（" & sectionName & "）"
 End Sub
 
-' 目的: IFなど通常の条件分岐を、テンプレートの一ブロックへ書き込む。
+' IFなど通常の条件分岐を、テンプレートの一ブロックへ書き込む。
 Private Sub WriteNormalBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection)
     ' if / 三項演算子 / for / foreach / while の共通形式
     EnsureIndividualSheetWritableRow ws, startRow
@@ -1015,7 +1015,7 @@ Private Sub WriteNormalBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVa
     WriteConditionResultRow ws, startRow + 3, 2, EventText(eventItem, "Cond2"), EventText(eventItem, "Result2")
 End Sub
 
-' 目的: switch引数、各case、defaultを表形式で書き込み、次の空き行を返す。
+' switch引数、各case、defaultを表形式で書き込み、次の空き行を返す。
 Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long, ByVal eventItem As Collection) As Long
     ' switchブロック:
     ' - ヘッダ1行
@@ -1068,13 +1068,13 @@ Private Function WriteSwitchBlock(ByVal ws As Worksheet, ByVal startRow As Long,
     WriteSwitchBlock = lastUsedBranchRow + 2
 End Function
 
-' 目的: switchの一つのcaseまたはdefaultを、指定した表行へ書き込む。
+' switchの一つのcaseまたはdefaultを、指定した表行へ書き込む。
 Private Sub WriteSwitchBranchRow(ByVal ws As Worksheet, ByVal rowIndex As Long, ByVal seqNo As Long, ByVal conditionText As String, ByVal expectedText As String)
     ' switchの分岐行（case/default相当）の共通出力
     WriteConditionResultRow ws, rowIndex, seqNo, conditionText, expectedText
 End Sub
 
-' 目的: 分岐種別に応じた期待結果文言を、個別シートの所定列へ設定する。
+' 分岐種別に応じた期待結果文言を、個別シートの所定列へ設定する。
 Private Sub WriteConditionResultRow(ByVal ws As Worksheet, ByVal rowIndex As Long, ByVal seqNo As Long, ByVal conditionText As String, ByVal expectedText As String)
     ' 通常条件とswitch分岐で共通する確認結果行を出力する
     EnsureIndividualSheetWritableRow ws, rowIndex
@@ -1087,7 +1087,7 @@ Private Sub WriteConditionResultRow(ByVal ws As Worksheet, ByVal rowIndex As Lon
     ws.Range("CF" & CStr(rowIndex)).value = "1,4"
 End Sub
 
-' 目的: 書き込み直前にもテンプレート下端を確認し、不足時だけ行を追加する。
+' 書き込み直前にもテンプレート下端を確認し、不足時だけ行を追加する。
 Private Sub EnsureIndividualSheetWritableRow(ByVal ws As Worksheet, ByVal rowIndex As Long)
     ' A:Dが未結合の最初の行をα行とし、
     ' 書き込み予定行が α-50 ～ α に入る場合は事前退避テンプレートを50行挿入する
@@ -1121,7 +1121,7 @@ Private Sub EnsureIndividualSheetWritableRow(ByVal ws As Worksheet, ByVal rowInd
     End If
 End Sub
 
-' 目的: 個別シートのAからD列が結合済みかを判定し、テンプレート形式差を吸収する。
+' 個別シートのAからD列が結合済みかを判定し、テンプレート形式差を吸収する。
 Private Function IsIndividualSheetADMerged(ByVal ws As Worksheet, ByVal rowIndex As Long) As Boolean
     ' A列セルの結合範囲が、その行の A:D と「ちょうど一致」するか判定
     Dim firstCell As Range
@@ -1135,7 +1135,7 @@ Private Function IsIndividualSheetADMerged(ByVal ws As Worksheet, ByVal rowIndex
     End With
 End Function
 
-' 目的: 行挿入位置を決めるため、テンプレート下部のαマーカー行を検索する。
+' 行挿入位置を決めるため、テンプレート下部のαマーカー行を検索する。
 Private Function FindAlphaRow(ByVal ws As Worksheet, ByVal writeTargetRow As Long) As Long
     ' α行 = A:D が未結合の最初の行
     Dim usedLastRow As Long
@@ -1159,7 +1159,7 @@ Private Function FindAlphaRow(ByVal ws As Worksheet, ByVal writeTargetRow As Lon
     Next r
 End Function
 
-' 目的: テンプレートの書式と結合状態を保ったまま、指定位置へ行ブロックを追加する。
+' テンプレートの書式と結合状態を保ったまま、指定位置へ行ブロックを追加する。
 Private Sub InsertTemplateRowsChunk(ByVal ws As Worksheet, ByVal insertAtRow As Long, ByVal insertCount As Long)
     ' 退避済みテンプレート（個別シート15行目から10行）を使って、
     ' insertAtRow へ insertCount 行分のテンプレートを挿入する
@@ -1186,7 +1186,7 @@ Private Sub InsertTemplateRowsChunk(ByVal ws As Worksheet, ByVal insertAtRow As 
     Loop
 End Sub
 
-' 目的: 行追加で参照元が変形しないよう、元テンプレート領域を退避シートへ複製する。
+' 行追加で参照元が変形しないよう、元テンプレート領域を退避シートへ複製する。
 Private Sub PrepareIndividualSheetTemplateSnapshot(ByVal individualSheet As Worksheet)
     ' 個別シート15行目から10行を、後続の行挿入用テンプレートとして一時シートへ退避する
     Dim wb As Workbook
@@ -1211,7 +1211,7 @@ Private Sub PrepareIndividualSheetTemplateSnapshot(ByVal individualSheet As Work
     Set mTemplateSnapshotSheet = snapshotSheet
 End Sub
 
-' 目的: 個別シート処理後に、一時テンプレート退避シートを削除する。
+' 個別シート処理後に、一時テンプレート退避シートを削除する。
 Private Sub ClearIndividualSheetTemplateSnapshot()
     ' 一時テンプレートシートを削除する
     Dim previousDisplayAlerts As Boolean
@@ -1229,7 +1229,7 @@ Private Sub ClearIndividualSheetTemplateSnapshot()
     On Error GoTo 0
 End Sub
 
-' 目的: 既存シートと衝突しない、一時テンプレート退避用の名前を生成する。
+' 既存シートと衝突しない、一時テンプレート退避用の名前を生成する。
 Private Function BuildTemplateSnapshotSheetName(ByVal wb As Workbook) As String
     ' 一時シート名を衝突しにくい形で生成する（31文字以内）
     Dim baseName As String
@@ -1248,7 +1248,7 @@ Private Function BuildTemplateSnapshotSheetName(ByVal wb As Workbook) As String
     BuildTemplateSnapshotSheetName = candidateName
 End Function
 
-' 目的: 指定名のワークシートがブック内に存在するか判定する。
+' 指定名のワークシートがブック内に存在するか判定する。
 Private Function WorksheetExistsByName(ByVal wb As Workbook, ByVal sheetName As String) As Boolean
     Dim ws As Worksheet
 
@@ -1260,7 +1260,7 @@ Private Function WorksheetExistsByName(ByVal wb As Workbook, ByVal sheetName As 
     Next ws
 End Function
 
-' 目的: IFなど通常分岐を、後段で共通処理できるイベント形式へ変換する。
+' IFなど通常分岐を、後段で共通処理できるイベント形式へ変換する。
 Private Function CreateNormalSyntaxEvent(ByVal syntaxKind As String) As Collection
     ' 通常ブロック（if / ternary / for / foreach / while）の文言をまとめたイベント
     Dim ev As Collection
@@ -1317,7 +1317,7 @@ Private Function CreateNormalSyntaxEvent(ByVal syntaxKind As String) As Collecti
     Set CreateNormalSyntaxEvent = ev
 End Function
 
-' 目的: 関数宣言を、新しい出力セクション開始を表すイベント形式へ変換する。
+' 関数宣言を、新しい出力セクション開始を表すイベント形式へ変換する。
 Private Function CreateFunctionEvent(ByVal functionName As String) As Collection
     ' function検出イベント（個別シートでは新しい処理セクション開始に使用）
     Dim ev As Collection
@@ -1326,7 +1326,7 @@ Private Function CreateFunctionEvent(ByVal functionName As String) As Collection
     Set CreateFunctionEvent = ev
 End Function
 
-' 目的: 一つのswitch全体を解析し、caseとネスト子イベントを保持する階層イベントへまとめる。
+' 一つのswitch全体を解析し、caseとネスト子イベントを保持する階層イベントへまとめる。
 Private Function CollectSwitchEvent( _
     ByRef sourceTextValues As Variant, _
     ByVal switchRow As Long, _
@@ -1427,7 +1427,7 @@ UpdateDepthAndContinue:
     Set CollectSwitchEvent = ev
 End Function
 
-' 目的: caseまたはdefaultの値と子イベントを格納するbranchイベントを作成する。
+' caseまたはdefaultの値と子イベントを格納するbranchイベントを作成する。
 Private Function NewSwitchBranchEvent(ByVal branchLabel As String, ByVal isDefault As Boolean) As Collection
     Dim branchEvent As Collection
 
@@ -1438,7 +1438,7 @@ Private Function NewSwitchBranchEvent(ByVal branchLabel As String, ByVal isDefau
     Set NewSwitchBranchEvent = branchEvent
 End Function
 
-' 目的: 現在branchのソース範囲を再帰解析し、switchイベントへ確定追加する。
+' 現在branchのソース範囲を再帰解析し、switchイベントへ確定追加する。
 Private Sub FinalizeSwitchBranch( _
     ByRef sourceTextValues As Variant, _
     ByVal contentStartRow As Long, _
@@ -1460,7 +1460,7 @@ Private Sub FinalizeSwitchBranch( _
     branches.Add branchEvent
 End Sub
 
-' 目的: 一行内の波括弧を数え、switchのネスト深度増減を算出する。
+' 一行内の波括弧を数え、switchのネスト深度増減を算出する。
 Private Function CountBraceDelta(ByVal lineText As String) As Long
     ' 波括弧の増減を簡易カウントする。文字列リテラルまでは見ない前提の軽量実装
     Dim i As Long
@@ -1476,7 +1476,7 @@ Private Function CountBraceDelta(ByVal lineText As String) As Long
     Next i
 End Function
 
-' 目的: 関数宣言行から、個別シート見出しに表示する関数名を抽出する。
+' 関数宣言行から、個別シート見出しに表示する関数名を抽出する。
 Private Function ParseFunctionName(ByVal lineText As String) As String
     ' `function` の後ろの識別子を簡易抽出
     ' 例: function foo(XXX){  -> foo
@@ -1519,7 +1519,7 @@ Private Function ParseFunctionName(ByVal lineText As String) As String
     End If
 End Function
 
-' 目的: switch行の括弧内から、条件として表示する引数文字列を抽出する。
+' switch行の括弧内から、条件として表示する引数文字列を抽出する。
 Private Function ParseSwitchArgument(ByVal lineText As String) As String
     ' `switch(YYY)` の括弧内を簡易抽出
     Dim posSwitch As Long
@@ -1555,7 +1555,7 @@ Private Function ParseSwitchArgument(ByVal lineText As String) As String
     End If
 End Function
 
-' 目的: case行からコロン以前の値を抽出し、switch表へ表示できる形に整える。
+' case行からコロン以前の値を抽出し、switch表へ表示できる形に整える。
 Private Function ParseCaseValue(ByVal lineText As String) As String
     ' `case XXX:` の XXX 部分を簡易抽出
     Dim posCase As Long
@@ -1582,7 +1582,7 @@ Private Function ParseCaseValue(ByVal lineText As String) As String
     End If
 End Function
 
-' 目的: 指定列の値または数式を基準に、ソース解析対象の最終行を取得する。
+' 指定列の値または数式を基準に、ソース解析対象の最終行を取得する。
 Private Function GetLastRow(ByVal ws As Worksheet, ByVal columnIndex As Long) As Long
     ' 指定列の最終行を返す（列が空でも最低1を返す）
     Dim lastRow As Long
@@ -1595,7 +1595,7 @@ Private Function GetLastRow(ByVal ws As Worksheet, ByVal columnIndex As Long) As
     GetLastRow = lastRow
 End Function
 
-' 目的: セル単位アクセスを避けるため、ソース列の解析範囲を二次元配列で読み込む。
+' セル単位アクセスを避けるため、ソース列の解析範囲を二次元配列で読み込む。
 Private Function ReadColumnValues( _
     ByVal ws As Worksheet, _
     ByVal columnIndex As Long, _
@@ -1619,7 +1619,7 @@ Private Function ReadColumnValues( _
     End If
 End Function
 
-' 目的: Emptyやエラー値を安全に空文字へ変換し、解析可能なセル文字列を返す。
+' Emptyやエラー値を安全に空文字へ変換し、解析可能なセル文字列を返す。
 Private Function GetCellTextFromValue(ByVal cellValue As Variant) As String
     ' エラー値を安全に文字列化するためのヘルパー
     On Error GoTo SafeExit
@@ -1637,7 +1637,7 @@ SafeExit:
     GetCellTextFromValue = vbNullString
 End Function
 
-' 目的: 先頭の#または//をコメント行とみなし、構文解析から除外する。
+' 先頭の#または//をコメント行とみなし、構文解析から除外する。
 Private Function IsCommentLine(ByVal lineText As String) As Boolean
     ' 先頭（前方空白を除去後）が # または // の行をコメントとみなす
     Dim normalizedText As String
@@ -1656,7 +1656,7 @@ Private Function IsCommentLine(ByVal lineText As String) As Boolean
     End If
 End Function
 
-' 目的: 行がFunctionまたは対応対象の条件分岐構文かをまとめて判定する。
+' 行がFunctionまたは対応対象の条件分岐構文かをまとめて判定する。
 Private Function IsMarkTargetLine(ByVal lineText As String) As Boolean
     ' 現行ソースシートのB列マーキング対象
     ' ※ 文字列ベースの部分一致判定を採用
@@ -1720,14 +1720,14 @@ Private Function IsMarkTargetLine(ByVal lineText As String) As Boolean
     End If
 End Function
 
-' 目的: 単語境界を考慮し、行がif分岐を表すか判定する。
+' 単語境界を考慮し、行がif分岐を表すか判定する。
 Private Function IsIfLine(ByVal lineText As String) As Boolean
     ' else if は別扱いなので除外
     If IsElseIfLine(lineText) Then Exit Function
     IsIfLine = ContainsWholeWord(lineText, "if")
 End Function
 
-' 目的: elseifとelse ifの両表記を、独立した分岐構文として判定する。
+' elseifとelse ifの両表記を、独立した分岐構文として判定する。
 Private Function IsElseIfLine(ByVal lineText As String) As Boolean
     ' 「else if」に加えて「elseif」も対象にする
     If ContainsWholeWord(lineText, "elseif") Then
@@ -1740,56 +1740,56 @@ Private Function IsElseIfLine(ByVal lineText As String) As Boolean
                    ContainsWholeWord(lineText, "if")
 End Function
 
-' 目的: else ifを除外し、単独のelse行だけを判定する。
+' else ifを除外し、単独のelse行だけを判定する。
 Private Function IsElseLine(ByVal lineText As String) As Boolean
     IsElseLine = ContainsWholeWord(lineText, "else")
 End Function
 
-' 目的: 疑問符とコロンの存在から、三項演算子を含む行か判定する。
+' 疑問符とコロンの存在から、三項演算子を含む行か判定する。
 Private Function IsTernaryLine(ByVal lineText As String) As Boolean
     IsTernaryLine = (InStr(1, lineText, "?", vbBinaryCompare) > 0 And _
                      InStr(1, lineText, ":", vbBinaryCompare) > 0)
 End Function
 
-' 目的: 単語境界を考慮し、行がforeachループを表すか判定する。
+' 単語境界を考慮し、行がforeachループを表すか判定する。
 Private Function IsForeachLine(ByVal lineText As String) As Boolean
     IsForeachLine = ContainsWholeWord(lineText, "foreach")
 End Function
 
-' 目的: foreachを誤検出せず、行がforループを表すか判定する。
+' foreachを誤検出せず、行がforループを表すか判定する。
 Private Function IsForLine(ByVal lineText As String) As Boolean
     ' foreach とは区別する
     If IsForeachLine(lineText) Then Exit Function
     IsForLine = ContainsWholeWord(lineText, "for")
 End Function
 
-' 目的: 単語境界を考慮し、行がwhileループを表すか判定する。
+' 単語境界を考慮し、行がwhileループを表すか判定する。
 Private Function IsWhileLine(ByVal lineText As String) As Boolean
     IsWhileLine = ContainsWholeWord(lineText, "while")
 End Function
 
-' 目的: 単語境界を考慮し、行がswitch開始を表すか判定する。
+' 単語境界を考慮し、行がswitch開始を表すか判定する。
 Private Function IsSwitchLine(ByVal lineText As String) As Boolean
     IsSwitchLine = ContainsWholeWord(lineText, "switch")
 End Function
 
-' 目的: 先頭キーワードとコロンから、switchのcase行か判定する。
+' 先頭キーワードとコロンから、switchのcase行か判定する。
 Private Function IsCaseLine(ByVal lineText As String) As Boolean
     ' 「case」を単語区切りで判定し、かつ「:」を含む行を対象にする
     IsCaseLine = ContainsWholeWord(lineText, "case") And (InStr(1, lineText, ":", vbBinaryCompare) > 0)
 End Function
 
-' 目的: 先頭キーワードとコロンから、switchのdefault行か判定する。
+' 先頭キーワードとコロンから、switchのdefault行か判定する。
 Private Function IsDefaultLine(ByVal lineText As String) As Boolean
     IsDefaultLine = ContainsWholeWord(lineText, "default") And (InStr(1, lineText, ":", vbBinaryCompare) > 0)
 End Function
 
-' 目的: 単語境界を考慮し、行が関数宣言を表すか判定する。
+' 単語境界を考慮し、行が関数宣言を表すか判定する。
 Private Function IsFunctionLine(ByVal lineText As String) As Boolean
     IsFunctionLine = ContainsWholeWord(lineText, "function")
 End Function
 
-' 目的: HTML開始タグを検出し、PHPソース範囲の走査終了条件か判定する。
+' HTML開始タグを検出し、PHPソース範囲の走査終了条件か判定する。
 Private Function IsSourceSearchStopLine(ByVal lineText As String) As Boolean
     ' HTML開始付近に入ったら、現行ソースシートの下側は検索しない
     IsSourceSearchStopLine = _
@@ -1798,7 +1798,7 @@ Private Function IsSourceSearchStopLine(ByVal lineText As String) As Boolean
         ContainsText(lineText, "<head")
 End Function
 
-' 目的: 識別子の一部を誤検出しないよう、前後文字を含めて単語一致を判定する。
+' 識別子の一部を誤検出しないよう、前後文字を含めて単語一致を判定する。
 Private Function ContainsWholeWord(ByVal sourceText As String, ByVal findWord As String) As Boolean
     ' 単語区切りで一致する場合のみTrue
     ' 例: "for" は "form" ではヒットしない
@@ -1837,7 +1837,7 @@ Private Function ContainsWholeWord(ByVal sourceText As String, ByVal findWord As
     Loop
 End Function
 
-' 目的: 英数字とアンダースコアを識別子構成文字として判定する。
+' 英数字とアンダースコアを識別子構成文字として判定する。
 Private Function IsWordChar(ByVal ch As String) As Boolean
     ' 単語構成文字（ASCII識別子系）を判定
     Dim codePoint As Long
@@ -1853,7 +1853,7 @@ Private Function IsWordChar(ByVal ch As String) As Boolean
         (ch = "$")
 End Function
 
-' 目的: 大文字小文字を区別せず、対象文字列が含まれるか判定する。
+' 大文字小文字を区別せず、対象文字列が含まれるか判定する。
 Private Function ContainsText(ByVal sourceText As String, ByVal findText As String) As Boolean
     ' 大文字小文字を無視した部分一致
     If Len(findText) = 0 Then
@@ -1863,7 +1863,7 @@ Private Function ContainsText(ByVal sourceText As String, ByVal findText As Stri
     End If
 End Function
 
-' 目的: カラーコードをExcel色値へ変換し、不正値なら既定色を返す。
+' カラーコードをExcel色値へ変換し、不正値なら既定色を返す。
 Private Function HexColorTextToColorLongOrDefault(ByVal rawHex As String, ByVal defaultColor As Long) As Long
     Dim t As String
     Dim redPart As Long
@@ -1910,7 +1910,7 @@ ParseError:
     HexColorTextToColorLongOrDefault = defaultColor
 End Function
 
-' 目的: 保存後に再度開いたとき、走査した現行ソースシートが選択される状態にする。
+' 保存後に再度開いたとき、走査した現行ソースシートが選択される状態にする。
 Private Sub ActivateSheetForNextOpen(ByVal wb As Workbook, ByVal targetSheet As Worksheet)
     If wb Is Nothing Then Exit Sub
     If targetSheet Is Nothing Then Exit Sub
@@ -1922,7 +1922,7 @@ Private Sub ActivateSheetForNextOpen(ByVal wb As Workbook, ByVal targetSheet As 
     On Error GoTo 0
 End Sub
 
-' 目的: 種類名を持つ共通イベントコンテナを作成する。
+' 種類名を持つ共通イベントコンテナを作成する。
 Private Function NewEvent(ByVal eventKind As String) As Collection
     ' 疑似イベントオブジェクト（Collection + Key）を生成
     Dim ev As Collection
@@ -1931,7 +1931,7 @@ Private Function NewEvent(ByVal eventKind As String) As Collection
     Set NewEvent = ev
 End Function
 
-' 目的: イベント内の文字列項目を取得し、欠落時は指定既定値を返す。
+' イベント内の文字列項目を取得し、欠落時は指定既定値を返す。
 Private Function EventText(ByVal ev As Collection, ByVal keyName As String, Optional ByVal defaultValue As String = "") As String
     ' Collectionのキー取得（文字列）
     On Error GoTo UseDefault
@@ -1942,7 +1942,7 @@ UseDefault:
     EventText = defaultValue
 End Function
 
-' 目的: イベント内の真偽値項目を取得し、欠落時はFalseを返す。
+' イベント内の真偽値項目を取得し、欠落時はFalseを返す。
 Private Function EventFlag(ByVal ev As Collection, ByVal keyName As String) As Boolean
     ' Collectionのキー取得（Boolean）
     On Error GoTo UseFalse
@@ -1953,7 +1953,7 @@ UseFalse:
     EventFlag = False
 End Function
 
-' 目的: イベント内の子Collectionを取得し、欠落時はNothingを返す。
+' イベント内の子Collectionを取得し、欠落時はNothingを返す。
 Private Function EventCollection(ByVal ev As Collection, ByVal keyName As String) As Collection
     ' Collectionのキー取得（Collectionオブジェクト）
     On Error GoTo NoCollection

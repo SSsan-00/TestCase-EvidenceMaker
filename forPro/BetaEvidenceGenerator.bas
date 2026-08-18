@@ -130,7 +130,7 @@ Private mUiOptions As BetaEvidenceUiOptions
 Private mSlotHeight As Long ' スロット行オフセット（未指定時は既定値を使用）
 Private mSkipSourceFillColorMap As Object ' 参照元塗りつぶしスキップ色マップ
 
-' 目的: フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路でエビデンス生成を行う。
+' フォームまたはCONFIGから渡された設定を一時適用し、通常の実行経路でエビデンス生成を行う。
 Public Sub RunMainWithUiOptions(ByRef options As BetaEvidenceUiOptions)
     ClearUiOptions
     mUiOptions = options
@@ -141,7 +141,7 @@ Public Sub RunMainWithUiOptions(ByRef options As BetaEvidenceUiOptions)
     ClearUiOptions
 End Sub
 
-' 目的: フォームとCONFIGで共有するエビデンス生成の既定設定を作成する。
+' フォームとCONFIGで共有するエビデンス生成の既定設定を作成する。
 Public Function CreateBetaEvidenceUiOptionsForForm() As BetaEvidenceUiOptions
     Dim options As BetaEvidenceUiOptions
 
@@ -149,7 +149,7 @@ Public Function CreateBetaEvidenceUiOptionsForForm() As BetaEvidenceUiOptions
     CreateBetaEvidenceUiOptionsForForm = options
 End Function
 
-' 目的: 呼び出し側が用意した設定へ、ソース定数に基づく既定値を設定する。
+' 呼び出し側が用意した設定へ、ソース定数に基づく既定値を設定する。
 Public Sub InitializeBetaEvidenceUiOptionsForForm(ByRef options As BetaEvidenceUiOptions)
     options.Enabled = True
     options.sourceWorkbookPath = vbNullString
@@ -196,7 +196,7 @@ Public Sub InitializeBetaEvidenceUiOptionsForForm(ByRef options As BetaEvidenceU
     options.evidenceColumnLayoutScope = OPTION_EVIDENCE_COLUMN_LAYOUT_SCOPE
 End Sub
 
-' 目的: 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
+' 前回のUI設定が単体実行へ漏れないよう、モジュール保持値を初期化する。
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.sourceWorkbookPath = vbNullString
@@ -247,7 +247,7 @@ End Sub
 ' エントリポイント
 ' ============================================================
 
-' 目的: 入力取得、REFER照合、共通・個別ブック生成、保存までの処理全体を統括する。
+' 入力取得、REFER照合、共通・個別ブック生成、保存までの処理全体を統括する。
 Public Sub RunMain()
     On Error GoTo ErrorHandler
 
@@ -612,7 +612,7 @@ End Sub
 ' 入力・ブック取得
 ' ============================================================
 
-' 目的: 参照元として読み込むExcelブックをファイル選択ダイアログから取得する。
+' 参照元として読み込むExcelブックをファイル選択ダイアログから取得する。
 Private Function SelectTargetWorkbookPath() As String
     ' FileDialog を使って、参照元の xlsx をユーザーに選ばせる
     ' 参照設定依存を避けるため、FileDialog型ではなく Object で扱う
@@ -656,7 +656,7 @@ Fallback:
     End If
 End Function
 
-' 目的: REFER照合と出力名に使用する対象ファイル名をユーザーから取得する。
+' REFER照合と出力名に使用する対象ファイル名をユーザーから取得する。
 Private Function PromptInputFileName() As String
     ' REFER検索キーになる入力ファイル名を受け取る
     ' 前後の空白は誤入力になりやすいため Trim する
@@ -670,7 +670,7 @@ Private Function PromptInputFileName() As String
     s = InputBox("入力ファイル名を入力してください（例: menu/mainmenu.php）", "入力ファイル名")
     PromptInputFileName = Trim$(s)
 End Function
-' 目的: オプションに応じて行オフセットを入力させ、未指定時はソース既定値を採用する。
+' オプションに応じて行オフセットを入力させ、未指定時はソース既定値を採用する。
 Private Function PromptSlotHeightOrDefault(ByVal defaultHeight As Long) As Long
     ' スロットの行オフセットを受け取る（空欄は既定値）
     Dim inputText As String
@@ -704,7 +704,7 @@ Private Function PromptSlotHeightOrDefault(ByVal defaultHeight As Long) As Long
     PromptSlotHeightOrDefault = CLng(numericValue)
 End Function
 
-' 目的: 個別名と範囲指定に対応した出力対象シート文字列をユーザーから取得する。
+' 個別名と範囲指定に対応した出力対象シート文字列をユーザーから取得する。
 Private Function PromptOutputSheetFilter() As String
     Dim inputText As String
 
@@ -719,7 +719,7 @@ Private Function PromptOutputSheetFilter() As String
     PromptOutputSheetFilter = inputText
 End Function
 
-' 目的: カンマ区切り・コロン範囲の指定を、照合用シート名マップへ展開する。
+' カンマ区切り・コロン範囲の指定を、照合用シート名マップへ展開する。
 Private Function ParseOutputSheetFilter( _
     ByVal rawInput As String, _
     Optional ByVal commonSourceWs As Worksheet = Nothing, _
@@ -757,7 +757,7 @@ Private Function ParseOutputSheetFilter( _
     End If
 End Function
 
-' 目的: 開放範囲の終端を決めるため、参照元に存在する系列別の最大番号を収集する。
+' 開放範囲の終端を決めるため、参照元に存在する系列別の最大番号を収集する。
 Private Function BuildOutputSheetRangeMaxMap( _
     Optional ByVal commonSourceWs As Worksheet = Nothing, _
     Optional ByVal individualSourceWs As Worksheet = Nothing) As Object
@@ -773,7 +773,7 @@ Private Function BuildOutputSheetRangeMaxMap( _
     Set BuildOutputSheetRangeMaxMap = dict
 End Function
 
-' 目的: 参照元A列のシート候補を走査し、系列別の最大番号を登録する。
+' 参照元A列のシート候補を走査し、系列別の最大番号を登録する。
 Private Sub RegisterOutputSheetRangeMaxFromSource( _
     ByVal sourceWs As Worksheet, _
     ByVal rangeMaxMap As Object)
@@ -804,7 +804,7 @@ Private Sub RegisterOutputSheetRangeMaxFromSource( _
     Next rowOffset
 End Sub
 
-' 目的: 単純なシート系列名だけを対象に、既知の最大番号を更新する。
+' 単純なシート系列名だけを対象に、既知の最大番号を更新する。
 Private Sub RegisterOutputSheetRangeMax( _
     ByVal rangeMaxMap As Object, _
     ByVal prefixText As String, _
@@ -821,7 +821,7 @@ Private Sub RegisterOutputSheetRangeMax( _
     End If
 End Sub
 
-' 目的: 単一名または範囲トークンを判別し、出力対象マップへ追加する。
+' 単一名または範囲トークンを判別し、出力対象マップへ追加する。
 Private Sub ExpandOutputSheetFilterToken( _
     ByVal outputSheetFilter As Object, _
     ByVal tokenText As String, _
@@ -836,7 +836,7 @@ Private Sub ExpandOutputSheetFilterToken( _
     End If
 End Sub
 
-' 目的: コロン範囲を同一系列の連続したシート名へ展開する。
+' コロン範囲を同一系列の連続したシート名へ展開する。
 Private Sub ExpandOutputSheetFilterRange( _
     ByVal outputSheetFilter As Object, _
     ByVal tokenText As String, _
@@ -914,7 +914,7 @@ Private Sub ExpandOutputSheetFilterRange( _
     Next currentIndex
 End Sub
 
-' 目的: 範囲の右端省略時に、参照元で確認できる系列の最終番号を解決する。
+' 範囲の右端省略時に、参照元で確認できる系列の最終番号を解決する。
 Private Function ResolveOutputSheetRangeLastIndex( _
     ByVal prefixText As String, _
     ByVal rangeMaxMap As Object, _
@@ -933,7 +933,7 @@ Private Function ResolveOutputSheetRangeLastIndex( _
     ResolveOutputSheetRangeLastIndex = CLng(rangeMaxMap(prefixText))
 End Function
 
-' 目的: 空文字と重複を除外して、シート名を大文字小文字非依存のマップへ登録する。
+' 空文字と重複を除外して、シート名を大文字小文字非依存のマップへ登録する。
 Private Sub AddOutputSheetFilterName( _
     ByVal outputSheetFilter As Object, _
     ByVal sheetName As String)
@@ -950,7 +950,7 @@ Private Sub AddOutputSheetFilterName( _
     End If
 End Sub
 
-' 目的: A1のような単純系列名を接頭辞と数値へ分解できるか試行する。
+' A1のような単純系列名を接頭辞と数値へ分解できるか試行する。
 Private Function TryParseSimpleSheetSeriesToken( _
     ByVal tokenText As String, _
     ByRef prefixTextOut As String, _
@@ -999,7 +999,7 @@ ParseError:
     numericIndexOut = 0
 End Function
 
-' 目的: 処理結果メッセージに表示する出力対象の説明文を組み立てる。
+' 処理結果メッセージに表示する出力対象の説明文を組み立てる。
 Private Function BuildOutputSheetFilterLabel(ByVal outputSheetFilter As Object) As String
     Dim key As Variant
     Dim sheetNames As String
@@ -1023,7 +1023,7 @@ Private Function BuildOutputSheetFilterLabel(ByVal outputSheetFilter As Object) 
     End If
 End Function
 
-' 目的: UI上書きを優先し、確定行の横罫線を適用するか決定する。
+' UI上書きを優先し、確定行の横罫線を適用するか決定する。
 Private Function IsTopBorderEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideTopBorderEnabled Then
         IsTopBorderEnabled = mUiOptions.topBorderEnabled
@@ -1032,7 +1032,7 @@ Private Function IsTopBorderEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、単体実行時に行オフセット入力を表示するか決定する。
+' UI上書きを優先し、単体実行時に行オフセット入力を表示するか決定する。
 Private Function IsSlotHeightPromptEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideSlotHeightPromptEnabled Then
         IsSlotHeightPromptEnabled = mUiOptions.SlotHeightPromptEnabled
@@ -1041,7 +1041,7 @@ Private Function IsSlotHeightPromptEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、単体実行時にシート選択入力を表示するか決定する。
+' UI上書きを優先し、単体実行時にシート選択入力を表示するか決定する。
 Private Function IsOutputSheetSelectionPromptEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideOutputSheetSelectionPromptEnabled Then
         IsOutputSheetSelectionPromptEnabled = mUiOptions.OutputSheetSelectionPromptEnabled
@@ -1050,7 +1050,7 @@ Private Function IsOutputSheetSelectionPromptEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、除外パターン判定を有効にするか決定する。
+' UI上書きを優先し、除外パターン判定を有効にするか決定する。
 Private Function IsExcludeOutputSheetByPatternEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideExcludeOutputSheetByPatternEnabled Then
         IsExcludeOutputSheetByPatternEnabled = mUiOptions.excludeOutputSheetByPatternEnabled
@@ -1059,7 +1059,7 @@ Private Function IsExcludeOutputSheetByPatternEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI指定があればそれを使い、なければソース定数の除外パターンを返す。
+' UI指定があればそれを使い、なければソース定数の除外パターンを返す。
 Private Function GetExcludedOutputSheetNamePatterns() As String
     If mUiOptions.Enabled And mUiOptions.UseExcludedOutputSheetNamePatterns Then
         GetExcludedOutputSheetNamePatterns = CStr(mUiOptions.excludedOutputSheetNamePatterns)
@@ -1068,7 +1068,7 @@ Private Function GetExcludedOutputSheetNamePatterns() As String
     End If
 End Function
 
-' 目的: UI上書きを優先し、参照元セルの塗りつぶし色による読取除外を決定する。
+' UI上書きを優先し、参照元セルの塗りつぶし色による読取除外を決定する。
 Private Function IsSkipGrayFilledSourceCellEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideSkipGrayFilledSourceCellEnabled Then
         IsSkipGrayFilledSourceCellEnabled = mUiOptions.skipGrayFilledSourceCellEnabled
@@ -1077,7 +1077,7 @@ Private Function IsSkipGrayFilledSourceCellEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI指定があればそれを使い、なければソース定数の読み飛ばし色一覧を返す。
+' UI指定があればそれを使い、なければソース定数の読み飛ばし色一覧を返す。
 Private Function GetSourceSkipFillColorHexCodes() As String
     If mUiOptions.Enabled And mUiOptions.UseSourceSkipFillColorHexCodes Then
         GetSourceSkipFillColorHexCodes = CStr(mUiOptions.sourceSkipFillColorHexCodes)
@@ -1086,7 +1086,7 @@ Private Function GetSourceSkipFillColorHexCodes() As String
     End If
 End Function
 
-' 目的: UI上書きを優先し、新旧境界の縦罫線を適用するか決定する。
+' UI上書きを優先し、新旧境界の縦罫線を適用するか決定する。
 Private Function IsRightBorderEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideRightBorderEnabled Then
         IsRightBorderEnabled = mUiOptions.rightBorderEnabled
@@ -1095,7 +1095,7 @@ Private Function IsRightBorderEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI上書きを優先し、現行側ヘッダ文字を削除するか決定する。
+' UI上書きを優先し、現行側ヘッダ文字を削除するか決定する。
 Private Function IsClearOldHeaderTextEnabled() As Boolean
     If mUiOptions.Enabled And mUiOptions.OverrideClearOldHeaderTextEnabled Then
         IsClearOldHeaderTextEnabled = mUiOptions.clearOldHeaderTextEnabled
@@ -1104,7 +1104,7 @@ Private Function IsClearOldHeaderTextEnabled() As Boolean
     End If
 End Function
 
-' 目的: UI指定と下限・上限を考慮して、新側に確保する比較列数を決定する。
+' UI指定と下限・上限を考慮して、新側に確保する比較列数を決定する。
 Private Function GetEvidenceNewSideColCount() As Long
     Dim desiredCount As Long
     Dim maxCount As Long
@@ -1127,7 +1127,7 @@ Private Function GetEvidenceNewSideColCount() As Long
     GetEvidenceNewSideColCount = desiredCount
 End Function
 
-' 目的: Excelの列上限と現行側領域を考慮し、新側列数の安全な上限を算出する。
+' Excelの列上限と現行側領域を考慮し、新側列数の安全な上限を算出する。
 Private Function GetEvidenceMaxNewSideColCount() As Long
     If StrComp(GetEvidenceColumnLayoutScope(), EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH, vbTextCompare) = 0 Then
         GetEvidenceMaxNewSideColCount = (EXCEL_MAX_COLUMN_COUNT - DEST_COL_B) \ 2
@@ -1140,7 +1140,7 @@ Private Function GetEvidenceMaxNewSideColCount() As Long
     End If
 End Function
 
-' 目的: 設定値を正規化し、新側だけか新旧両側を変更するか決定する。
+' 設定値を正規化し、新側だけか新旧両側を変更するか決定する。
 Private Function GetEvidenceColumnLayoutScope() As String
     Dim normalizedScope As String
 
@@ -1158,7 +1158,7 @@ Private Function GetEvidenceColumnLayoutScope() As String
     End Select
 End Function
 
-' 目的: 列構成オプションに基づき、現行側に確保する比較列数を返す。
+' 列構成オプションに基づき、現行側に確保する比較列数を返す。
 Private Function GetEvidenceOldSideColCount() As Long
     If StrComp(GetEvidenceColumnLayoutScope(), EVIDENCE_COLUMN_LAYOUT_SCOPE_BOTH, vbTextCompare) = 0 Then
         GetEvidenceOldSideColCount = GetEvidenceNewSideColCount()
@@ -1167,27 +1167,27 @@ Private Function GetEvidenceOldSideColCount() As Long
     End If
 End Function
 
-' 目的: 変更後の新側列数から、現行側領域の先頭列を算出する。
+' 変更後の新側列数から、現行側領域の先頭列を算出する。
 Private Function GetEvidenceOldSideFirstCol() As Long
     GetEvidenceOldSideFirstCol = GetRightBorderTargetCol() + 1
 End Function
 
-' 目的: 現行側の列増減でテンプレートまたは削除起点に使う列を算出する。
+' 現行側の列増減でテンプレートまたは削除起点に使う列を算出する。
 Private Function GetEvidenceOldSideAdjustCol() As Long
     GetEvidenceOldSideAdjustCol = GetEvidenceOldSideFirstCol() + 1
 End Function
 
-' 目的: 変更後の列構成に追従する新旧境界列を算出する。
+' 変更後の列構成に追従する新旧境界列を算出する。
 Private Function GetRightBorderTargetCol() As Long
     GetRightBorderTargetCol = ResolveEvidenceNewSideRightEdgeCol()
 End Function
 
-' 目的: 変更後の新旧列数に追従する横罫線の終端列を算出する。
+' 変更後の新旧列数に追従する横罫線の終端列を算出する。
 Private Function GetTopBorderEndCol() As Long
     GetTopBorderEndCol = GetRightBorderTargetCol() + GetEvidenceOldSideColCount()
 End Function
 
-' 目的: 指定された新側列数から、新側領域の右端列を算出する。
+' 指定された新側列数から、新側領域の右端列を算出する。
 Private Function ResolveEvidenceNewSideRightEdgeCol() As Long
     ResolveEvidenceNewSideRightEdgeCol = EVIDENCE_NEW_SIDE_FIRST_COL + GetEvidenceNewSideColCount() - 1
 
@@ -1196,7 +1196,7 @@ Private Function ResolveEvidenceNewSideRightEdgeCol() As Long
     End If
 End Function
 
-' 目的: フィルター未指定を全件扱いとし、指定時だけシート名の完全一致を判定する。
+' フィルター未指定を全件扱いとし、指定時だけシート名の完全一致を判定する。
 Private Function IsSheetAllowedByFilter( _
     ByVal sheetName As String, _
     ByVal outputSheetFilter As Object) As Boolean
@@ -1208,7 +1208,7 @@ Private Function IsSheetAllowedByFilter( _
     End If
 End Function
 
-' 目的: 有効なLikeパターンのいずれかにシート名が一致するか判定する。
+' 有効なLikeパターンのいずれかにシート名が一致するか判定する。
 Private Function IsExcludedByOutputSheetPattern(ByVal sheetName As String) As Boolean
     Dim normalizedName As String
     Dim rawPatterns As String
@@ -1235,7 +1235,7 @@ Private Function IsExcludedByOutputSheetPattern(ByVal sheetName As String) As Bo
     Next i
 End Function
 
-' 目的: カラーコード一覧をExcel色値の辞書へ変換し、セル走査中の判定を高速化する。
+' カラーコード一覧をExcel色値の辞書へ変換し、セル走査中の判定を高速化する。
 Private Function BuildSkipSourceFillColorMap() As Object
     Dim dict As Object
     Dim rawText As String
@@ -1271,7 +1271,7 @@ Private Function BuildSkipSourceFillColorMap() As Object
     End If
 End Function
 
-' 目的: 色指定を検証し、比較用の小文字#RRGGBB形式へ正規化する。
+' 色指定を検証し、比較用の小文字#RRGGBB形式へ正規化する。
 Private Function NormalizeHexColorTextForFillRule(ByVal rawText As String) As String
     Dim t As String
     Dim i As Long
@@ -1296,7 +1296,7 @@ Private Function NormalizeHexColorTextForFillRule(ByVal rawText As String) As St
     NormalizeHexColorTextForFillRule = t
 End Function
 
-' 目的: #RRGGBB文字列をExcelが使用するBGR形式の色値へ変換する。
+' #RRGGBB文字列をExcelが使用するBGR形式の色値へ変換する。
 Private Function HexColorTextToColorLong(ByVal normalizedHex6 As String) As Long
     Dim redPart As Long
     Dim greenPart As Long
@@ -1315,7 +1315,7 @@ ConversionError:
     HexColorTextToColorLong = -1
 End Function
 
-' 目的: 有効時だけセルの実塗りつぶし色を辞書と照合し、未入力扱いにするか判定する。
+' 有効時だけセルの実塗りつぶし色を辞書と照合し、未入力扱いにするか判定する。
 Private Function ShouldSkipSourceCellByFillColor( _
     ByVal sourceWs As Worksheet, _
     ByVal rowNumber As Long, _
@@ -1329,7 +1329,7 @@ Private Function ShouldSkipSourceCellByFillColor( _
     ShouldSkipSourceCellByFillColor = mSkipSourceFillColorMap.Exists(CStr(colorValue))
 End Function
 
-' 目的: 選択された参照元ブックを開き、後続処理で利用できるWorkbookを返す。
+' 選択された参照元ブックを開き、後続処理で利用できるWorkbookを返す。
 Private Function OpenTargetWorkbook(ByVal workbookPath As String, Optional ByVal openReadOnly As Boolean = False) As Workbook
     ' 既に同じファイルが開いている場合は再利用し、未オープンなら開く
     Dim wb As Workbook
@@ -1349,7 +1349,7 @@ Private Function OpenTargetWorkbook(ByVal workbookPath As String, Optional ByVal
         ReadOnly:=openReadOnly)
 End Function
 
-' 目的: REFER情報と共通・個別種別から、既定の出力ブックパスを組み立てる。
+' REFER情報と共通・個別種別から、既定の出力ブックパスを組み立てる。
 Private Function BuildOutputWorkbookPath( _
     ByVal sourceWorkbookPath As String, _
     ByVal outputWorkbookName As String) As String
@@ -1370,7 +1370,7 @@ Private Function BuildOutputWorkbookPath( _
     End If
 End Function
 
-' 目的: 既存ファイルと開いているブックを考慮し、再利用または新規作成する出力先を決定する。
+' 既存ファイルと開いているブックを考慮し、再利用または新規作成する出力先を決定する。
 Private Function ResolveOutputWorkbookPath(ByVal desiredOutputPath As String) As String
 
     Dim lastSepPos As Long
@@ -1411,7 +1411,7 @@ Private Function ResolveOutputWorkbookPath(ByVal desiredOutputPath As String) As
               "連番付き出力先を決定できませんでした（上限: 9999）。"
 End Function
 
-' 目的: フルパスを比較し、対象ブックが現在のExcelで既に開かれているか判定する。
+' フルパスを比較し、対象ブックが現在のExcelで既に開かれているか判定する。
 Private Function IsWorkbookAlreadyOpen(ByVal workbookPath As String) As Boolean
     Dim wb As Workbook
 
@@ -1423,7 +1423,7 @@ Private Function IsWorkbookAlreadyOpen(ByVal workbookPath As String) As Boolean
     Next wb
 End Function
 
-' 目的: 後から必要シートだけを追加できる、種シート付きの空出力ブックを作成する。
+' 後から必要シートだけを追加できる、種シート付きの空出力ブックを作成する。
 Private Function CreateEmptyOutputWorkbook( _
     ByVal outputPath As String, _
     ByRef seedSheetName As String) As Workbook
@@ -1451,7 +1451,7 @@ Private Function CreateEmptyOutputWorkbook( _
     Set CreateEmptyOutputWorkbook = wb
 End Function
 
-' 目的: 予定シートとの衝突を検査し、既存ブック再利用か新規ブック作成かを確定する。
+' 予定シートとの衝突を検査し、既存ブック再利用か新規ブック作成かを確定する。
 Private Function PrepareOutputWorkbookForEvidenceMode( _
     ByVal desiredOutputPath As String, _
     ByVal plannedSheetNameMap As Object, _
@@ -1505,7 +1505,7 @@ Private Function PrepareOutputWorkbookForEvidenceMode( _
     Set PrepareOutputWorkbookForEvidenceMode = wb
 End Function
 
-' 目的: 作成予定名と既存シート名を照合し、最初の競合名を返す。
+' 作成予定名と既存シート名を照合し、最初の競合名を返す。
 Private Function FindFirstConflictingSheetName( _
     ByVal wb As Workbook, _
     ByVal plannedSheetNameMap As Object) As String
@@ -1523,7 +1523,7 @@ Private Function FindFirstConflictingSheetName( _
     Next key
 End Function
 
-' 目的: 完了メッセージ向けに、既存追記か新規作成かを表す文言を組み立てる。
+' 完了メッセージ向けに、既存追記か新規作成かを表す文言を組み立てる。
 Private Function BuildOutputWorkbookUsageLabel( _
     ByVal reusedExistingWorkbook As Boolean, _
     ByVal workbookWasAlreadyOpen As Boolean, _
@@ -1543,7 +1543,7 @@ Private Function BuildOutputWorkbookUsageLabel( _
     End If
 End Function
 
-' 目的: 出力を行わなかった新規ブックだけを、保存せず安全に閉じる。
+' 出力を行わなかった新規ブックだけを、保存せず安全に閉じる。
 Private Sub ReleasePreparedOutputWorkbookWithoutSave( _
     ByRef wb As Workbook, _
     ByVal outputPath As String, _
@@ -1562,7 +1562,7 @@ Private Sub ReleasePreparedOutputWorkbookWithoutSave( _
     End If
 End Sub
 
-' 目的: 有効シートを残すための種シートを、実シート作成後に削除する。
+' 有効シートを残すための種シートを、実シート作成後に削除する。
 Private Sub RemoveSeedSheetIfNeeded(ByVal wb As Workbook, ByVal seedSheetName As String)
     If wb Is Nothing Then Exit Sub
     If Len(seedSheetName) = 0 Then Exit Sub
@@ -1571,7 +1571,7 @@ Private Sub RemoveSeedSheetIfNeeded(ByVal wb As Workbook, ByVal seedSheetName As
     DeleteWorksheetIfExists wb, seedSheetName
 End Sub
 
-' 目的: 保存後に開いたとき先頭シートが選択されるよう、ウィンドウ状態を整える。
+' 保存後に開いたとき先頭シートが選択されるよう、ウィンドウ状態を整える。
 Private Sub ActivateFirstWorksheetForOpenState(ByVal wb As Workbook)
     Dim firstWs As Worksheet
 
@@ -1583,7 +1583,7 @@ Private Sub ActivateFirstWorksheetForOpenState(ByVal wb As Workbook)
 End Sub
 
 
-' 目的: 失敗時に新規作成したブックを閉じ、途中生成ファイルも残さないよう破棄する。
+' 失敗時に新規作成したブックを閉じ、途中生成ファイルも残さないよう破棄する。
 Private Sub DiscardOutputWorkbookAndFile( _
     ByRef wb As Workbook, _
     ByVal outputPath As String)
@@ -1604,7 +1604,7 @@ Private Sub DiscardOutputWorkbookAndFile( _
     On Error GoTo 0
 End Sub
 
-' 目的: 共通モード用A1-1-1を複製し、対象名置換済みの先頭シートとして作成する。
+' 共通モード用A1-1-1を複製し、対象名置換済みの先頭シートとして作成する。
 Private Sub CreateCommonHeaderSheet( _
     ByVal targetWb As Workbook, _
     ByVal templateHeaderWs As Worksheet, _
@@ -1635,7 +1635,7 @@ End Sub
 ' REFER参照
 ' ============================================================
 
-' 目的: 対象ファイル名をREFERで完全一致検索し、出力判定に使う値を取得する。
+' 対象ファイル名をREFERで完全一致検索し、出力判定に使う値を取得する。
 Private Function GetReferValueFromReferSheet( _
     ByVal referWs As Worksheet, _
     ByVal inputFileName As String) As String
@@ -1677,7 +1677,7 @@ Private Function GetReferValueFromReferSheet( _
     End If
 End Function
 
-' 目的: REFERのα・β情報から、共通用と個別用の出力ブック名を組み立てる。
+' REFERのα・β情報から、共通用と個別用の出力ブック名を組み立てる。
 Private Sub BuildEvidenceWorkbookNamesFromRefer( _
     ByVal referWs As Worksheet, _
     ByVal inputFileName As String, _
@@ -1744,7 +1744,7 @@ Private Sub BuildEvidenceWorkbookNamesFromRefer( _
     individualWorkbookName = alphaText & "_【個別】" & betaText & gammaText & "_単体テストエビデンス_初期開発.xlsx"
 End Sub
 
-' 目的: 生成予定ブック名と既存有無を、実行前確認用のメッセージへ整形する。
+' 生成予定ブック名と既存有無を、実行前確認用のメッセージへ整形する。
 Private Function BuildTargetNameCheckMessage( _
     ByVal actualTargetWorkbookName As String, _
     ByVal expectedCommonWorkbookName As String, _
@@ -1758,7 +1758,7 @@ Private Function BuildTargetNameCheckMessage( _
     End If
 End Function
 
-' 目的: 指定列を配列走査し、文字列が完全一致する最初の行番号を返す。
+' 指定列を配列走査し、文字列が完全一致する最初の行番号を返す。
 Private Function FindRowByExactMatch( _
     ByVal ws As Worksheet, _
     ByVal targetColLetter As String, _
@@ -1797,7 +1797,7 @@ Private Function FindRowByExactMatch( _
     Next r
 End Function
 
-' 目的: 列記号をCellsで安全に使える1始まりの列番号へ変換する。
+' 列記号をCellsで安全に使える1始まりの列番号へ変換する。
 Private Function ColumnLetterToIndex( _
     ByVal columnLetter As String, _
     Optional ByVal labelForError As String = vbNullString) As Long
@@ -1836,7 +1836,7 @@ Private Function ColumnLetterToIndex( _
     End If
 End Function
 
-' 目的: 必須セルを文字列として読み取り、空欄やエラー値なら位置付きで中断する。
+' 必須セルを文字列として読み取り、空欄やエラー値なら位置付きで中断する。
 Private Function GetTrimmedCellStringOrRaise( _
     ByVal cellValue As Variant, _
     ByVal callerName As String, _
@@ -1852,7 +1852,7 @@ Private Function GetTrimmedCellStringOrRaise( _
     End If
 End Function
 
-' 目的: REFERのβ値を検証し、ブック名に使う2桁数字へ整形する。
+' REFERのβ値を検証し、ブック名に使う2桁数字へ整形する。
 Private Function ToTwoDigitStringStrict( _
     ByVal valueD As Variant, _
     ByVal valueLabel As String) As String
@@ -1896,7 +1896,7 @@ Private Function ToTwoDigitStringStrict( _
     ToTwoDigitStringStrict = Format$(CLng(numericValue), "00")
 End Function
 
-' 目的: シート名とセル番地を含む、入力不正エラー共通の位置情報を組み立てる。
+' シート名とセル番地を含む、入力不正エラー共通の位置情報を組み立てる。
 Private Function BuildErrorLabelPrefix(ByVal labelText As String) As String
     If Len(Trim$(labelText)) = 0 Then
         BuildErrorLabelPrefix = vbNullString
@@ -1909,7 +1909,7 @@ End Function
 ' 参照元シート探索
 ' ============================================================
 
-' 目的: 大文字小文字を区別せず、指定名と完全一致するワークシートを検索する。
+' 大文字小文字を区別せず、指定名と完全一致するワークシートを検索する。
 Private Function FindWorksheetExact(ByVal wb As Workbook, ByVal sheetName As String) As Worksheet
     ' シート名完全一致で取得します。見つからない場合は Nothing を返す
     On Error Resume Next
@@ -1917,7 +1917,7 @@ Private Function FindWorksheetExact(ByVal wb As Workbook, ByVal sheetName As Str
     On Error GoTo 0
 End Function
 
-' 目的: 対象ファイル名に対応する個別参照元シートを、候補規則に従って検索する。
+' 対象ファイル名に対応する個別参照元シートを、候補規則に従って検索する。
 Private Function FindIndividualSourceSheet(ByVal targetWb As Workbook, ByVal referValue As String) As Worksheet
     ' 個別モードの参照元: 【個別】referValue（完全一致）
 
@@ -1935,7 +1935,7 @@ End Function
 ' 参照元シート -> エビデンスシート生成
 ' ============================================================
 
-' 目的: 参照元と各種除外条件から、事前衝突検査に使う作成予定シート名を収集する。
+' 参照元と各種除外条件から、事前衝突検査に使う作成予定シート名を収集する。
 Private Function BuildPlannedEvidenceSheetNameMap( _
     ByVal sourceWs As Worksheet, _
     ByVal modeLabel As String, _
@@ -2026,7 +2026,7 @@ Private Function BuildPlannedEvidenceSheetNameMap( _
     Set BuildPlannedEvidenceSheetNameMap = plannedSheetNameMap
 End Function
 
-' 目的: 参照元A・E・H列を一度走査し、シート切替とスロット書き込みを状態管理する。
+' 参照元A・E・H列を一度走査し、シート切替とスロット書き込みを状態管理する。
 Private Function ProcessReferenceSheet( _
     ByVal sourceWs As Worksheet, _
     ByVal targetWb As Workbook, _
@@ -2248,7 +2248,7 @@ End Function
 ' エビデンスシート作成・テンプレ適用
 ' ============================================================
 
-' 目的: 同名シートを置き換え、指定テンプレートからエビデンスシートを再作成する。
+' 同名シートを置き換え、指定テンプレートからエビデンスシートを再作成する。
 Private Function RecreateEvidenceSheetFromTemplate( _
     ByVal targetWb As Workbook, _
     ByVal templateSourceWs As Worksheet, _
@@ -2286,7 +2286,7 @@ RenameError:
               "（シート名の文字数・使用禁止文字・重複を確認してください）"
 End Function
 
-' 目的: 再生成前の同名ワークシートが存在する場合だけ、確認なしで削除する。
+' 再生成前の同名ワークシートが存在する場合だけ、確認なしで削除する。
 Private Sub DeleteWorksheetIfExists( _
     ByVal wb As Workbook, _
     ByVal targetSheetName As String, _
@@ -2318,7 +2318,7 @@ Private Sub DeleteWorksheetIfExists( _
     ws.Delete
 End Sub
 
-' 目的: A1-1-1内の置換対象セルだけを走査し、○○○を対象名へ置換する。
+' A1-1-1内の置換対象セルだけを走査し、○○○を対象名へ置換する。
 Private Sub ReplaceHeaderPlaceholderInSheet( _
     ByVal evidenceWs As Worksheet, _
     ByVal baseName As String)
@@ -2339,7 +2339,7 @@ Private Sub ReplaceHeaderPlaceholderInSheet( _
     End If
 End Sub
 
-' 目的: A1複製直後に列構成、現行ラベル、罫線の初期状態をまとめて整える。
+' A1複製直後に列構成、現行ラベル、罫線の初期状態をまとめて整える。
 Private Sub ConfigureEvidenceBodySheetLayout(ByVal evidenceWs As Worksheet)
     If evidenceWs Is Nothing Then Exit Sub
 
@@ -2350,7 +2350,7 @@ Private Sub ConfigureEvidenceBodySheetLayout(ByVal evidenceWs As Worksheet)
     AdjustEvidenceBodyColumnLayout evidenceWs
 End Sub
 
-' 目的: 設定された適用範囲に従い、新側と必要なら現行側の列数を変更する。
+' 設定された適用範囲に従い、新側と必要なら現行側の列数を変更する。
 Private Sub AdjustEvidenceBodyColumnLayout(ByVal evidenceWs As Worksheet)
     Dim desiredNewSideColCount As Long
     Dim layoutScope As String
@@ -2365,7 +2365,7 @@ Private Sub AdjustEvidenceBodyColumnLayout(ByVal evidenceWs As Worksheet)
     End If
 End Sub
 
-' 目的: 雛形15列との差分に応じて、新側領域を拡張または縮小する。
+' 雛形15列との差分に応じて、新側領域を拡張または縮小する。
 Private Sub ResizeEvidenceNewSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredNewSideColCount As Long)
@@ -2377,7 +2377,7 @@ Private Sub ResizeEvidenceNewSideColumns( _
     End If
 End Sub
 
-' 目的: 新旧境界を崩さない順序で、新側の不要列を削除する。
+' 新旧境界を崩さない順序で、新側の不要列を削除する。
 Private Sub ShrinkEvidenceNewSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredNewSideColCount As Long)
@@ -2395,7 +2395,7 @@ Private Sub ShrinkEvidenceNewSideColumns( _
     Next i
 End Sub
 
-' 目的: D列の書式・幅・数式をテンプレートとして、新側へ必要列を挿入する。
+' D列の書式・幅・数式をテンプレートとして、新側へ必要列を挿入する。
 Private Sub ExpandEvidenceNewSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredNewSideColCount As Long)
@@ -2416,7 +2416,7 @@ Private Sub ExpandEvidenceNewSideColumns( _
     Application.CutCopyMode = False
 End Sub
 
-' 目的: 雛形15列との差分に応じて、現行側領域を拡張または縮小する。
+' 雛形15列との差分に応じて、現行側領域を拡張または縮小する。
 Private Sub ResizeEvidenceOldSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredOldSideColCount As Long)
@@ -2428,7 +2428,7 @@ Private Sub ResizeEvidenceOldSideColumns( _
     End If
 End Sub
 
-' 目的: 右側レイアウトへの影響を抑えながら、現行側の不要列を削除する。
+' 右側レイアウトへの影響を抑えながら、現行側の不要列を削除する。
 Private Sub ShrinkEvidenceOldSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredOldSideColCount As Long)
@@ -2448,7 +2448,7 @@ Private Sub ShrinkEvidenceOldSideColumns( _
     Next i
 End Sub
 
-' 目的: 現行側先頭列をテンプレートとして、現行側へ必要列を挿入する。
+' 現行側先頭列をテンプレートとして、現行側へ必要列を挿入する。
 Private Sub ExpandEvidenceOldSideColumns( _
     ByVal evidenceWs As Worksheet, _
     ByVal desiredOldSideColCount As Long)
@@ -2475,7 +2475,7 @@ End Sub
 ' 参照元 A/E/H の読み取り補助
 ' ============================================================
 
-' 目的: 参照元セルのエラー値を見逃さず、シート・行・列を示して処理を中断する。
+' 参照元セルのエラー値を見逃さず、シート・行・列を示して処理を中断する。
 Private Sub EnsureNotErrorValue( _
     ByVal cellValue As Variant, _
     ByVal sheetName As String, _
@@ -2489,7 +2489,7 @@ Private Sub EnsureNotErrorValue( _
     End If
 End Sub
 
-' 目的: Empty・空文字・空白だけを未入力とし、参照元セルに実値があるか判定する。
+' Empty・空文字・空白だけを未入力とし、参照元セルに実値があるか判定する。
 Private Function HasValueForSourceCell(ByVal cellValue As Variant) As Boolean
     ' A/E/H列の「値あり判定」。
     ' 文字列は Trim 後に空なら空扱い、数値は 0 でも値あり扱いにする
@@ -2503,7 +2503,7 @@ Private Function HasValueForSourceCell(ByVal cellValue As Variant) As Boolean
     End If
 End Function
 
-' 目的: 書式だけのセルに影響されず、指定列で値または数式がある最終行を取得する。
+' 書式だけのセルに影響されず、指定列で値または数式がある最終行を取得する。
 Private Function GetLastUsedRowInColumn(ByVal ws As Worksheet, ByVal columnIndex As Long) As Long
     Dim lastRow As Long
 
@@ -2515,7 +2515,7 @@ Private Function GetLastUsedRowInColumn(ByVal ws As Worksheet, ByVal columnIndex
     GetLastUsedRowInColumn = lastRow
 End Function
 
-' 目的: セル単位アクセスを避けるため、指定列の走査範囲を二次元配列で読み込む。
+' セル単位アクセスを避けるため、指定列の走査範囲を二次元配列で読み込む。
 Private Function ReadColumnValuesFromRow( _
     ByVal ws As Worksheet, _
     ByVal columnIndex As Long, _
@@ -2539,7 +2539,7 @@ Private Function ReadColumnValuesFromRow( _
     End If
 End Function
 
-' 目的: 参照元A列の値をシート名として整形し、不正な空欄を位置付きで拒否する。
+' 参照元A列の値をシート名として整形し、不正な空欄を位置付きで拒否する。
 Private Function NormalizeEvidenceSheetName( _
     ByVal rawValue As Variant, _
     ByVal sourceSheetName As String, _
@@ -2555,7 +2555,7 @@ Private Function NormalizeEvidenceSheetName( _
     End If
 End Function
 
-' 目的: Excelの禁止文字・長さ・重複条件に照らしてシート名を検証する。
+' Excelの禁止文字・長さ・重複条件に照らしてシート名を検証する。
 Private Sub ValidateWorksheetName(ByVal sheetNameText As String)
     ' Excelシート名として明らかに不正な値は、コピー/リネーム前に弾いて原因を明確にする
     Dim invalidChars As Variant
@@ -2583,7 +2583,7 @@ End Sub
 ' スロット書き込み（E/H -> エビデンスシート）
 ' ============================================================
 
-' 目的: 全スロット確定後に既存罫線を整理し、横罫線・縦罫線・下端の蓋を再構成する。
+' 全スロット確定後に既存罫線を整理し、横罫線・縦罫線・下端の蓋を再構成する。
 Private Sub FinalizeEvidenceSheetBorders(ByVal destWs As Worksheet)
     Dim targetRow As Long
     Dim lastConfirmedRow As Long
@@ -2604,7 +2604,7 @@ Private Sub FinalizeEvidenceSheetBorders(ByVal destWs As Worksheet)
     Next targetRow
 End Sub
 
-' 目的: 雛形由来の余分な横罫線を消し、今回のスロット境界だけを引き直せる状態にする。
+' 雛形由来の余分な横罫線を消し、今回のスロット境界だけを引き直せる状態にする。
 Private Sub ResetEvidenceTopBorders( _
     ByVal destWs As Worksheet, _
     ByVal lastConfirmedRow As Long, _
@@ -2629,14 +2629,14 @@ Private Sub ResetEvidenceTopBorders( _
     Next targetRow
 End Sub
 
-' 目的: 入力値が有効な場合だけそれを使い、書き込み行間隔を安全な値で返す。
+' 入力値が有効な場合だけそれを使い、書き込み行間隔を安全な値で返す。
 Private Function GetSlotHeightForWrite() As Long
     GetSlotHeightForWrite = mSlotHeight
     If GetSlotHeightForWrite <= 0 Then
         GetSlotHeightForWrite = SLOT_HEIGHT
     End If
 End Function
-' 目的: 未確定のE列値をシート切替前にB単独スロットとして確定する。
+' 未確定のE列値をシート切替前にB単独スロットとして確定する。
 Private Sub FlushPendingBIfNeeded( _
     ByVal destWs As Worksheet, _
     ByRef slotIndex As Long, _
@@ -2653,7 +2653,7 @@ Private Sub FlushPendingBIfNeeded( _
     hasPendingB = False
 End Sub
 
-' 目的: E列とH列がそろったケースを同じスロットのA・B列へ書き込む。
+' E列とH列がそろったケースを同じスロットのA・B列へ書き込む。
 Private Sub WritePairSlot( _
     ByVal destWs As Worksheet, _
     ByVal slotIndex As Long, _
@@ -2671,7 +2671,7 @@ Private Sub WritePairSlot( _
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
 
-' 目的: H列だけで確定したケースをA列へ書き込み、対応する境界罫線を適用する。
+' H列だけで確定したケースをA列へ書き込み、対応する境界罫線を適用する。
 Private Sub WriteCOnlySlot( _
     ByVal destWs As Worksheet, _
     ByVal slotIndex As Long, _
@@ -2686,7 +2686,7 @@ Private Sub WriteCOnlySlot( _
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
 
-' 目的: 保留されていたE列だけのケースをA列へ書き込み、対応する境界罫線を適用する。
+' 保留されていたE列だけのケースをA列へ書き込み、対応する境界罫線を適用する。
 Private Sub WriteBOnlySlot( _
     ByVal destWs As Worksheet, _
     ByVal slotIndex As Long, _
@@ -2701,7 +2701,7 @@ Private Sub WriteBOnlySlot( _
     ApplyRightBorderToConfiguredColumn destWs, destRow
 End Sub
 
-' 目的: 雛形の残存罫線を消してから、変更後境界列へ必要長の縦罫線を引き直す。
+' 雛形の残存罫線を消してから、変更後境界列へ必要長の縦罫線を引き直す。
 Private Sub ApplyRightBorderToConfiguredColumn( _
     ByVal destWs As Worksheet, _
     ByVal lastWrittenRow As Long)
@@ -2740,7 +2740,7 @@ Private Sub ApplyRightBorderToConfiguredColumn( _
     ApplyBottomBorderClosure destWs, lastWrittenRow, endRow
 End Sub
 
-' 目的: 最終確定行と行オフセットから、縦罫線および下端罫線の終端行を決定する。
+' 最終確定行と行オフセットから、縦罫線および下端罫線の終端行を決定する。
 Private Function ResolveRightBorderEndRow( _
     ByVal destWs As Worksheet, _
     ByVal lastWrittenRow As Long) As Long
@@ -2762,7 +2762,7 @@ Private Function ResolveRightBorderEndRow( _
     If ResolveRightBorderEndRow < endRow Then ResolveRightBorderEndRow = endRow
 End Function
 
-' 目的: 過去の長い縦罫線も消せるよう、今回終端と使用済み最終行の大きい方を返す。
+' 過去の長い縦罫線も消せるよう、今回終端と使用済み最終行の大きい方を返す。
 Private Function ResolveRightBorderCleanupEndRow( _
     ByVal destWs As Worksheet, _
     ByVal resolvedEndRow As Long) As Long
@@ -2781,7 +2781,7 @@ Private Function ResolveRightBorderCleanupEndRow( _
     ResolveRightBorderCleanupEndRow = cleanupEndRow
 End Function
 
-' 目的: 値・数式・書式を含む使用範囲から、罫線清掃に必要な最終行を取得する。
+' 値・数式・書式を含む使用範囲から、罫線清掃に必要な最終行を取得する。
 Private Function GetWorksheetUsedLastRow(ByVal ws As Worksheet) As Long
     Dim lastRow As Long
 
@@ -2798,7 +2798,7 @@ Private Function GetWorksheetUsedLastRow(ByVal ws As Worksheet) As Long
     GetWorksheetUsedLastRow = lastRow
 End Function
 
-' 目的: ユーザー指定の行オフセットを、最終確定行より下へ延長する行数として返す。
+' ユーザー指定の行オフセットを、最終確定行より下へ延長する行数として返す。
 Private Function GetConfiguredBorderExtensionRows() As Long
     If mSlotHeight > 0 Then
         GetConfiguredBorderExtensionRows = mSlotHeight
@@ -2807,7 +2807,7 @@ Private Function GetConfiguredBorderExtensionRows() As Long
     End If
 End Function
 
-' 目的: A列とB列の値を比較し、実際に確定した最終書き込み行を取得する。
+' A列とB列の値を比較し、実際に確定した最終書き込み行を取得する。
 Private Function GetLastConfirmedDestRow(ByVal ws As Worksheet) As Long
     Dim lastRow As Long
     Dim lastRowA As Long
@@ -2827,7 +2827,7 @@ Private Function GetLastConfirmedDestRow(ByVal ws As Worksheet) As Long
     GetLastConfirmedDestRow = lastRow
 End Function
 
-' 目的: 指定列で最後に値または数式がある行を検索する。
+' 指定列で最後に値または数式がある行を検索する。
 Private Function GetLastNonEmptyRowInColumn( _
     ByVal ws As Worksheet, _
     ByVal targetCol As Long) As Long
@@ -2859,7 +2859,7 @@ Private Function GetLastNonEmptyRowInColumn( _
     End If
 End Function
 
-' 目的: 縦罫線の終端行に比較領域全体の下罫線を引き、表の下端を閉じる。
+' 縦罫線の終端行に比較領域全体の下罫線を引き、表の下端を閉じる。
 Private Sub ApplyBottomBorderClosure( _
     ByVal destWs As Worksheet, _
     ByVal lastWrittenRow As Long, _
@@ -2896,7 +2896,7 @@ Private Sub ApplyBottomBorderClosure( _
     End With
 End Sub
 
-' 目的: 先頭行を除く確定スロット行へ、変更後比較領域全体の上罫線を引く。
+' 先頭行を除く確定スロット行へ、変更後比較領域全体の上罫線を引く。
 Private Sub ApplyTopBorderToConfirmedRow( _
     ByVal destWs As Worksheet, _
     ByVal targetRow As Long)
@@ -2931,7 +2931,7 @@ Private Sub ApplyTopBorderToConfirmedRow( _
     End With
 End Sub
 
-' 目的: スロット番号と行オフセットから、A列・B列へ書き込む行番号を算出する。
+' スロット番号と行オフセットから、A列・B列へ書き込む行番号を算出する。
 Private Function GetDestRowForSlot(ByVal slotIndex As Long) As Long
     If slotIndex < 0 Then
         Err.Raise vbObjectError + 2401, "GetDestRowForSlot", "slotIndex が負数です。"
@@ -2944,7 +2944,7 @@ End Function
 ' 共通ユーティリティ
 ' ============================================================
 
-' 目的: 必須ワークシートを完全一致で取得し、存在しなければ用途を示して中断する。
+' 必須ワークシートを完全一致で取得し、存在しなければ用途を示して中断する。
 Private Function GetWorksheetOrRaise( _
     ByVal wb As Workbook, _
     ByVal sheetName As String, _
@@ -2957,7 +2957,7 @@ Private Function GetWorksheetOrRaise( _
     End If
 End Function
 
-' 目的: ファイル名の最後の拡張子だけを除き、REFER照合や置換に使う基底名を返す。
+' ファイル名の最後の拡張子だけを除き、REFER照合や置換に使う基底名を返す。
 Private Function RemoveExtension(ByVal fileNameText As String) As String
     ' "foo.php" -> "foo"
     ' "foo.bar.php" -> "foo.bar"
