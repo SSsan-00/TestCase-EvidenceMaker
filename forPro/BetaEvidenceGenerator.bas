@@ -39,7 +39,6 @@ Private Const SOURCE_START_ROW As Long = 8          ' 仕様にある開始行
 Private Const SOURCE_COL_A As Long = 1              ' A列: 作成するエビデンスシート名
 Private Const SOURCE_COL_B As Long = 5              ' E列: pendingB 用
 Private Const SOURCE_COL_C As Long = 8              ' H列: 確定トリガ
-Private Const EMPTY_STREAK_STOP_COUNT As Long = 100  ' A/E/H空行が連続したら走査終了
 
 ' ===== エビデンスシートへの書き込み（スロット） =====
 Private Const FIRST_DEST_ROW As Long = 3 ' slot0 の書き込み開始行
@@ -790,7 +789,7 @@ Private Sub RegisterOutputSheetRangeMaxFromSource( _
     If sourceWs Is Nothing Then Exit Sub
 
     lastRowA = GetLastUsedRowInColumn(sourceWs, SOURCE_COL_A)
-    scanEndRow = lastRowA + EMPTY_STREAK_STOP_COUNT
+    scanEndRow = lastRowA
     sourceValuesA = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_A, SOURCE_START_ROW, scanEndRow)
 
     For rowOffset = 1 To UBound(sourceValuesA, 1)
@@ -1958,7 +1957,6 @@ Private Function BuildPlannedEvidenceSheetNameMap( _
     Dim hasA As Boolean
     Dim hasB As Boolean
     Dim hasC As Boolean
-    Dim emptyStreak As Long
     Dim aSheetName As String
 
     Set plannedSheetNameMap = CreateObject("Scripting.Dictionary")
@@ -1977,12 +1975,9 @@ Private Function BuildPlannedEvidenceSheetNameMap( _
     If maxRowC > scanEndRow Then scanEndRow = maxRowC
     If scanEndRow < SOURCE_START_ROW Then scanEndRow = SOURCE_START_ROW
 
-    scanEndRow = scanEndRow + EMPTY_STREAK_STOP_COUNT
     sourceValuesA = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_A, SOURCE_START_ROW, scanEndRow)
     sourceValuesB = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_B, SOURCE_START_ROW, scanEndRow)
     sourceValuesC = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_C, SOURCE_START_ROW, scanEndRow)
-
-    emptyStreak = 0
 
     For rowOffset = 1 To UBound(sourceValuesA, 1)
         r = SOURCE_START_ROW + rowOffset - 1
@@ -2002,12 +1997,6 @@ Private Function BuildPlannedEvidenceSheetNameMap( _
         hasB = HasValueForSourceCell(rawB)
         hasC = HasValueForSourceCell(rawC)
 
-        If (Not hasA) And (Not hasB) And (Not hasC) Then
-            emptyStreak = emptyStreak + 1
-        Else
-            emptyStreak = 0
-        End If
-
         If hasA Then
             aSheetName = NormalizeEvidenceSheetName(rawA, sourceWs.Name, r)
 
@@ -2020,7 +2009,6 @@ Private Function BuildPlannedEvidenceSheetNameMap( _
             End If
         End If
 
-        If emptyStreak >= EMPTY_STREAK_STOP_COUNT Then Exit For
     Next rowOffset
 
     Set BuildPlannedEvidenceSheetNameMap = plannedSheetNameMap
@@ -2041,7 +2029,6 @@ Private Function ProcessReferenceSheet( _
     ' 参照元シート（共通または個別）を走査し、A/E/Hのルールに従って
     ' エビデンスシートを作成・更新する
     Dim r As Long
-    Dim emptyStreak As Long
 
     Dim currentEvidenceWs As Worksheet
     Dim currentEvidenceSheetName As String
@@ -2086,12 +2073,10 @@ Private Function ProcessReferenceSheet( _
     If scanEndRow < SOURCE_START_ROW Then scanEndRow = SOURCE_START_ROW
 
     ' ループ中のセル参照を減らすため、必要列を配列へ読み込む
-    scanEndRow = scanEndRow + EMPTY_STREAK_STOP_COUNT
     sourceValuesA = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_A, SOURCE_START_ROW, scanEndRow)
     sourceValuesB = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_B, SOURCE_START_ROW, scanEndRow)
     sourceValuesC = ReadColumnValuesFromRow(sourceWs, SOURCE_COL_C, SOURCE_START_ROW, scanEndRow)
 
-    emptyStreak = 0
     Set currentEvidenceWs = Nothing
     currentEvidenceSheetName = vbNullString
     slotIndex = 0
@@ -2117,12 +2102,6 @@ Private Function ProcessReferenceSheet( _
         hasA = HasValueForSourceCell(rawA)
         hasB = HasValueForSourceCell(rawB)
         hasC = HasValueForSourceCell(rawC)
-
-        If (Not hasA) And (Not hasB) And (Not hasC) Then
-            emptyStreak = emptyStreak + 1
-        Else
-            emptyStreak = 0
-        End If
 
         ' A列に値が来たら、現在シートを切り替える
         ' その前に pendingB が残っていれば、前シートに B単体として確定させる
@@ -2217,9 +2196,6 @@ Private Function ProcessReferenceSheet( _
             End If
         End If
 
-        If emptyStreak >= EMPTY_STREAK_STOP_COUNT Then
-            Exit For
-        End If
     Next rowOffset
 
     ' 走査終了時にも pendingB が残っていれば、最後の1件を取りこぼさないよう確定させる
