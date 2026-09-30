@@ -155,8 +155,8 @@ Public Sub RunConditionalBranchCheckerForTest(ByVal targetPath As String, ByVal 
     options.workbookPath = targetPath
     options.OverrideWriteIndividualSheetEnabled = True
     options.writeIndividualSheetEnabled = writeIndividualSheet
-    options.OverrideMarkNonFunctionLineWithDash = True
-    options.markNonFunctionLineWithDash = True
+    options.OverrideWriteBranchIdentifierEnabled = True
+    options.writeBranchIdentifierEnabled = True
     options.OverrideMarkFillEnabled = True
     options.markFillEnabled = False
     options.UseMarkFillColorHex = True

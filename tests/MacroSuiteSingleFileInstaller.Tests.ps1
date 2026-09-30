@@ -77,6 +77,27 @@ try {
         Write-Host ("Installed: {0} ({1} lines)" -f $componentName, $component.CodeModule.CountOfLines)
     }
 
+    # Exercise the generated form code and CONFIG defaults, not only the modules.
+    $helperProcess = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $helperPath
+    ) -WindowStyle Hidden -PassThru
+    $excel.Run("'" + $workbook.Name + "'!InstallMacroToolsUserForm")
+    $excel.Run("'" + $workbook.Name + "'!CreateMacroConfigSheet")
+    if ($helperProcess -and -not $helperProcess.HasExited) {
+        Stop-Process -Id $helperProcess.Id -Force
+    }
+    $helperProcess = $null
+    $form = $workbook.VBProject.VBComponents.Item('frmMacroTools')
+    $config = $workbook.Worksheets.Item('CONFIG')
+    if ($form.Designer.Controls.Item('fraTestCase').Controls.Item('cboSheetOrder').ListIndex -ne 0) {
+        throw 'Form sheet-order default mismatch.'
+    }
+    if ($config.Range('B24').Value2 -ne ([string][char]0x6A5F + [char]0x80FD + [char]0x5225)) {
+        throw 'CONFIG sheet-order default mismatch.'
+    }
+    if ([string]$config.Range('B29').Value2 -ne 'FALSE') {
+        throw 'CONFIG identifier default must be off.'
+    }
     $compileControl = $excel.VBE.CommandBars.FindControl(1, 578)
     if ($null -eq $compileControl) {
         throw 'VBE compile command was not found.'

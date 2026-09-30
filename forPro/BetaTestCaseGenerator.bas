@@ -46,9 +46,12 @@ Private Const MATCH_IDX_ROW As Long = 4
 
 ' ===== SaveAs ダイアログ =====
 Private Const SAVE_AS_FILTER As String = "Excel ブック (*.xlsx),*.xlsx"
+' True: 機能別 / False: ソース後置。単体実行のシート順もここで切り替える。
+Private Const GROUP_BY_FEATURE As Boolean = True
 Public Type BetaTestCaseUiOptions
     Enabled As Boolean
     featureId As String
+    groupByFeature As Boolean
     useOutputPath As Boolean
     outputPath As String
 End Type
@@ -72,6 +75,7 @@ Public Function CreateBetaTestCaseUiOptionsForForm() As BetaTestCaseUiOptions
 
     defaults.Enabled = True
     defaults.featureId = vbNullString
+    defaults.groupByFeature = GROUP_BY_FEATURE
     defaults.useOutputPath = False
     defaults.outputPath = vbNullString
 
@@ -82,6 +86,7 @@ End Function
 Private Sub ClearUiOptions()
     mUiOptions.Enabled = False
     mUiOptions.featureId = vbNullString
+    mUiOptions.groupByFeature = GROUP_BY_FEATURE
     mUiOptions.useOutputPath = False
     mUiOptions.outputPath = vbNullString
 End Sub
@@ -596,6 +601,9 @@ Private Function BuildOutputWorkbook( _
     Dim gammaText As String
 
     Dim ws As Worksheet
+    Dim groupByFeature As Boolean
+    groupByFeature = GROUP_BY_FEATURE
+    If mUiOptions.Enabled Then groupByFeature = mUiOptions.groupByFeature
 
     Set outputWb = Application.Workbooks.Add(xlWBATWorksheet)
     Set seedSheetNames = CaptureInitialSheetNames(outputWb)
@@ -618,13 +626,20 @@ Private Function BuildOutputWorkbook( _
         Set ws = CopyTemplateSheet(templateIndividualWs, outputWb, OUTPUT_INDIVIDUAL_PREFIX & betaText)
         FillCaseSheet ws, betaText, featureId
         createdSheetCount = createdSheetCount + 1
+
+        If groupByFeature Then
+            Set ws = CopyTemplateSheet(templateSourceWs, outputWb, OUTPUT_SOURCE_PREFIX & betaText)
+            FillSourceSheet ws, CStr(record(MATCH_IDX_GAMMA))
+            createdSheetCount = createdSheetCount + 1
+        End If
     Next i
 
     ' 2) ⇒参考 は1枚だけ
     Set ws = CopyTemplateSheet(templateReferenceWs, outputWb, TEMPLATE_REFERENCE_SHEET_NAME)
     createdSheetCount = createdSheetCount + 1
 
-    ' 3) βごとに 現行ソース（PHP） を作成し C4 に γ を設定
+    ' ソース後置の場合だけ、参考の後にソースをまとめて配置する。
+    If Not groupByFeature Then
     For i = 1 To matches.Count
         record = matches(i)
         betaText = CStr(record(MATCH_IDX_BETA))
@@ -634,6 +649,8 @@ Private Function BuildOutputWorkbook( _
         FillSourceSheet ws, gammaText
         createdSheetCount = createdSheetCount + 1
     Next i
+
+    End If
 
     ' 4) 現行画面 は1枚だけ
     Set ws = CopyTemplateSheet(templateScreenWs, outputWb, TEMPLATE_SCREEN_SHEET_NAME)

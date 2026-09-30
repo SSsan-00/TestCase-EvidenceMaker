@@ -22,7 +22,7 @@ Private Const SHEET_KEY_CURRENT_SOURCE As String = "現行ソース"
 Private Const SHEET_KEY_INDIVIDUAL_PREFIX As String = "【個別】"
 Private Const TEMPLATE_SNAPSHOT_SHEET_PREFIX As String = "__TMPROW15_"
 Private Const WRITE_INDIVIDUAL_SHEET_ENABLED As Boolean = True  ' True: 個別シートへ解析結果を書き込む / False: 現行ソースのマーキングのみ行う
-Private Const MARK_NON_FUNCTION_LINE_WITH_DASH As Boolean = True  ' True: function以外の対象行へ B{n}- を書き込む / False: function行だけ B{n} を書き込む
+Private Const WRITE_BRANCH_IDENTIFIER_ENABLED As Boolean = False  ' True: 関数行へB{n}、分岐行へB{n}-を書き込む / False: B列の識別子を書き込まない
 Private Const MARK_FILL_ENABLED As Boolean = False  ' True: マーキング対象のB列セルを塗りつぶす / False: 塗りつぶさない
 Private Const MARK_FILL_COLOR_HEX As String = "#FFF2CC"  ' 塗りつぶし色（#RRGGBB / 0xRRGGBB）
 Public Type ConditionalBranchCheckerUiOptions
@@ -31,8 +31,8 @@ Public Type ConditionalBranchCheckerUiOptions
     workbookPath As String
     OverrideWriteIndividualSheetEnabled As Boolean
     writeIndividualSheetEnabled As Boolean
-    OverrideMarkNonFunctionLineWithDash As Boolean
-    markNonFunctionLineWithDash As Boolean
+    OverrideWriteBranchIdentifierEnabled As Boolean
+    writeBranchIdentifierEnabled As Boolean
     OverrideMarkFillEnabled As Boolean
     markFillEnabled As Boolean
     UseMarkFillColorHex As Boolean
@@ -63,8 +63,8 @@ Public Function CreateConditionalBranchCheckerUiOptionsForForm() As ConditionalB
     defaults.workbookPath = vbNullString
     defaults.OverrideWriteIndividualSheetEnabled = True
     defaults.writeIndividualSheetEnabled = WRITE_INDIVIDUAL_SHEET_ENABLED
-    defaults.OverrideMarkNonFunctionLineWithDash = True
-    defaults.markNonFunctionLineWithDash = MARK_NON_FUNCTION_LINE_WITH_DASH
+    defaults.OverrideWriteBranchIdentifierEnabled = True
+    defaults.writeBranchIdentifierEnabled = WRITE_BRANCH_IDENTIFIER_ENABLED
     defaults.OverrideMarkFillEnabled = True
     defaults.markFillEnabled = MARK_FILL_ENABLED
     defaults.UseMarkFillColorHex = True
@@ -80,8 +80,8 @@ Private Sub ClearUiOptions()
     mUiOptions.workbookPath = vbNullString
     mUiOptions.OverrideWriteIndividualSheetEnabled = False
     mUiOptions.writeIndividualSheetEnabled = False
-    mUiOptions.OverrideMarkNonFunctionLineWithDash = False
-    mUiOptions.markNonFunctionLineWithDash = False
+    mUiOptions.OverrideWriteBranchIdentifierEnabled = False
+    mUiOptions.writeBranchIdentifierEnabled = False
     mUiOptions.OverrideMarkFillEnabled = False
     mUiOptions.markFillEnabled = False
     mUiOptions.UseMarkFillColorHex = False
@@ -436,12 +436,12 @@ Private Function IsWriteIndividualSheetEnabled() As Boolean
     End If
 End Function
 
-' UI上書きを優先し、非Function行の識別子へハイフンを付けるか決定する。
-Private Function IsMarkNonFunctionLineWithDashEnabled() As Boolean
-    If mUiOptions.Enabled And mUiOptions.OverrideMarkNonFunctionLineWithDash Then
-        IsMarkNonFunctionLineWithDashEnabled = mUiOptions.markNonFunctionLineWithDash
+' UI上書きを優先し、関数行・分岐行のB列へ識別子を書き込むか決定する。
+Private Function IsWriteBranchIdentifierEnabled() As Boolean
+    If mUiOptions.Enabled And mUiOptions.OverrideWriteBranchIdentifierEnabled Then
+        IsWriteBranchIdentifierEnabled = mUiOptions.writeBranchIdentifierEnabled
     Else
-        IsMarkNonFunctionLineWithDashEnabled = MARK_NON_FUNCTION_LINE_WITH_DASH
+        IsWriteBranchIdentifierEnabled = WRITE_BRANCH_IDENTIFIER_ENABLED
     End If
 End Function
 
@@ -520,13 +520,13 @@ Private Sub MarkCurrentSourceSheet( _
     ByVal firstTargetIsFunction As Boolean)
 
     ' 現行ソースシートのC列を走査し、対象構文に応じてA/B列へマーキングする
-    ' - function 行      : A列へ★、B列へ B(次セクション番号) を設定する
+    ' - function 行      : A列へ★、識別子出力ONならB列へ B(次セクション番号) を設定する
     ' - その他の対象構文 : オプションONなら B(現セクション番号)- を設定し、OFFなら文字列は書き込まない
     ' - 塗りつぶし      : オプションONならマーキング対象のB列セルを指定色で塗りつぶす
     Dim rowIndex As Long
     Dim lineText As String
     Dim currentSectionIndex As Long
-    Dim markNonFunctionLineWithDash As Boolean
+    Dim writeBranchIdentifierEnabled As Boolean
     Dim markFillEnabled As Boolean
     Dim markFillColor As Long
     Dim markCell As Range
@@ -535,7 +535,7 @@ Private Sub MarkCurrentSourceSheet( _
     ResetCurrentSourceMarkColumn sourceSheet, lastRow
     ResetCurrentSourceFunctionMarks sourceSheet, lastRow
 
-    markNonFunctionLineWithDash = IsMarkNonFunctionLineWithDashEnabled()
+    writeBranchIdentifierEnabled = IsWriteBranchIdentifierEnabled()
     markFillEnabled = IsMarkFillEnabled()
     If markFillEnabled Then
         markFillColor = ResolveMarkFillColor()
@@ -564,14 +564,16 @@ Private Sub MarkCurrentSourceSheet( _
             currentSectionIndex = currentSectionIndex + 1
             ApplyFunctionDeclarationMark sourceSheet, rowIndex
             Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
-            markCell.Value = "B" & CStr(currentSectionIndex)
+            If writeBranchIdentifierEnabled Then
+                markCell.Value = "B" & CStr(currentSectionIndex)
+            End If
             If markFillEnabled Then
                 ApplyMarkCellFill markCell, markFillColor
             End If
             markedCount = markedCount + 1
         ElseIf IsMarkTargetLine(lineText) Then
             Set markCell = sourceSheet.Cells(rowIndex, MARK_COL)
-            If markNonFunctionLineWithDash Then
+            If writeBranchIdentifierEnabled Then
                 markCell.Value = "B" & CStr(currentSectionIndex) & "-"
             End If
             If markFillEnabled Then
