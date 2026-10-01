@@ -89,8 +89,13 @@ try {
     $helperProcess = $null
     $form = $workbook.VBProject.VBComponents.Item('frmMacroTools')
     $config = $workbook.Worksheets.Item('CONFIG')
-    if ($form.Designer.Controls.Item('fraTestCase').Controls.Item('cboSheetOrder').ListIndex -ne 0) {
+    $orderControls = $form.Designer.Controls.Item('fraTestCase').Controls
+    if (-not $orderControls.Item('optSheetOrderFeature').Value -or $orderControls.Item('optSheetOrderSourceLast').Value) {
         throw 'Form sheet-order default mismatch.'
+    }
+    $orderControls.Item('optSheetOrderSourceLast').Value = $true
+    if ($orderControls.Item('optSheetOrderFeature').Value) {
+        throw 'Sheet-order radio buttons must be exclusive.'
     }
     if ($config.Range('B24').Value2 -ne ([string][char]0x6A5F + [char]0x80FD + [char]0x5225)) {
         throw 'CONFIG sheet-order default mismatch.'
