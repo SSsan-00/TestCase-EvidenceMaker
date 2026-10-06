@@ -359,7 +359,7 @@ CONFIG シートでは、ウィンドウ枠の固定は行いません。`CONFIG
 既定値は次の通りです。
 
 ```text
-pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr,sqlSs,sqlTime,sqlKintai,sqsSEx,sqlNEx
+pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr,sqlSs,sqlTime,sqlKintai,sqlSEx,sqlNEx
 ```
 
 ### エスケープ関数マーキング

@@ -186,7 +186,7 @@ try {
     $ws.Range('B27').Calculate()
     $ws.Range('B28').Value2 = 'sqlS(afterError)'
 
-    $addedFunctions = @('sqlSs', 'sqlTime', 'sqlKintai', 'sqsSEx', 'sqlNEx')
+    $addedFunctions = @('sqlSs', 'sqlTime', 'sqlKintai', 'sqlSEx', 'sqlNEx')
     for ($i = 0; $i -lt $addedFunctions.Count; $i++) {
         $ws.Range('B' + (100 + $i)).Value2 = $addedFunctions[$i] + '(value)'
     }
