@@ -111,13 +111,13 @@ Option Explicit
 
 Public Sub RunEscapePartsMarkingForTest(ByVal targetPath As String)
     Dim options As EscapePartsMarkingUiOptions
+    options = CreateEscapePartsMarkingUiOptionsForForm()
 
     options.Enabled = True
     options.TargetWorkbookPath = targetPath
     options.UseCompletionMessage = True
     options.completionMessage = "HIT"
     options.UseEscapeTargetPrefixesCsv = True
-    options.escapeTargetPrefixesCsv = "sqlS"
     options.UseOnlyAValueRowFillTarget = True
     options.onlyAValueRowFillTarget = "Both"
     options.UseOnlyAValueRowFillColorHex = True
@@ -185,6 +185,11 @@ try {
     $ws.Range('B27').Formula = '=NA()'
     $ws.Range('B27').Calculate()
     $ws.Range('B28').Value2 = 'sqlS(afterError)'
+
+    $addedFunctions = @('sqlSs', 'sqlTime', 'sqlKintai', 'sqsSEx', 'sqlNEx')
+    for ($i = 0; $i -lt $addedFunctions.Count; $i++) {
+        $ws.Range('B' + (100 + $i)).Value2 = $addedFunctions[$i] + '(value)'
+    }
 
     $ws.Range('B30').Value2 = 'sqlS(one) + sqlS(two)'
     $ws.Range('B32').Value2 = 'sqlS(")")'
@@ -311,6 +316,11 @@ try {
 
     Assert-Equal '' ([string]$verifyWs.Range('C27').Value2) 'C27 should remain empty.'
     Assert-CellFullyRedBold $verifyWs.Range('B28') 'B28'
+    for ($i = 0; $i -lt $addedFunctions.Count; $i++) {
+        $row = 100 + $i
+        Assert-CellFullyRedBold $verifyWs.Range("B$row") $addedFunctions[$i]
+        Assert-Equal 'HIT' ([string]$verifyWs.Range("C$row").Value2) 'New default function must be marked.'
+    }
     Assert-Equal 'HIT' ([string]$verifyWs.Range('C28').Value2) 'C28 hit message mismatch.'
 
     Assert-CharactersRedBold $verifyWs.Range('B30') 1 9 'B30 first function call'

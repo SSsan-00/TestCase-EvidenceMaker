@@ -2,7 +2,7 @@ Attribute VB_Name = "EscapePartsMarking"
 Option Explicit
 
 Private Const DEFAULT_COMPLETION_MESSAGE As String = "SQLインジェクション対策済み"
-Private Const ESCAPE_TARGET_PREFIXES_CSV As String = "pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr"
+Private Const ESCAPE_TARGET_PREFIXES_CSV As String = "pg_escape_string,sqlS,sqlN,sqlLS,sqlC,sqlNZ,sqlInN,sqlF,sqlChk,sqlLikeStr,sqlNum,sqlNum0,sqlStr,sqlSs,sqlTime,sqlKintai,sqsSEx,sqlNEx"
 Private Const OPTION_ONLY_A_VALUE_ROW_FILL_TARGET As String = "Both" ' None / Left / Right / Both
 Private Const ONLY_A_VALUE_ROW_FILL_COLOR_HEX As String = "#a6a6a6"
 Private Const FIRST_SCAN_ROW As Long = 4
