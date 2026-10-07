@@ -89,6 +89,12 @@ try {
     $helperProcess = $null
     $form = $workbook.VBProject.VBComponents.Item('frmMacroTools')
     $config = $workbook.Worksheets.Item('CONFIG')
+    if ($form.Designer.Controls.Item('fraConditional').Controls.Item('chkWriteIndividualSheet').Value) {
+        throw 'Form individual-sheet output default must be off.'
+    }
+    if ([string]$config.Range('B28').Value2 -ne 'FALSE') {
+        throw 'CONFIG individual-sheet output default must be off.'
+    }
     $orderControls = $form.Designer.Controls.Item('fraTestCase').Controls
     if (-not $orderControls.Item('optSheetOrderFeature').Value -or $orderControls.Item('optSheetOrderSourceLast').Value) {
         throw 'Form sheet-order default mismatch.'
